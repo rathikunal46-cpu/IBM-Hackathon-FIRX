@@ -1,0 +1,153 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FIR-X: Crime Intelligence System</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f8f8;--fg:#2b2f33;--mut:#5b6470;--acc:#0f766e;--tint:#e3f0ee;--line:#c9d3d2;--dk:#22272b;--dkfg:#eef3f2;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1f22;--fg:#e8eeed;--mut:#9aa6a8;--acc:#3cb8ac;--tint:#243230;--line:#37423f;--dk:#101314}}
+:root[data-theme="dark"]{--bg:#1b1f22;--fg:#e8eeed;--mut:#9aa6a8;--acc:#3cb8ac;--tint:#243230;--line:#37423f;--dk:#101314}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:'Source Sans 3',system-ui,sans-serif}
+.deck{height:100%;position:relative;overflow:hidden}
+.s{position:absolute;inset:0;padding:6vh 7vw 9vh;display:none;flex-direction:column;justify-content:center;overflow-y:auto}
+.s.on{display:flex}
+h1,h2{font-family:'Source Serif 4',Georgia,serif;font-weight:700;line-height:1.1}
+h1{font-size:clamp(3rem,9vw,6.5rem);color:var(--acc)}
+h2{font-size:clamp(1.7rem,4vw,2.9rem);margin-bottom:1.2rem;padding-left:1rem;border-left:.4rem solid var(--acc)}
+.sub{font-family:'Source Serif 4',Georgia,serif;font-size:clamp(1.2rem,2.6vw,1.9rem);margin-top:.6rem}
+.mut{color:var(--mut);margin-top:1rem;font-size:clamp(1rem,1.8vw,1.25rem)}
+ul{list-style:none;padding:0;max-width:60rem}
+li{font-size:clamp(1.05rem,2.1vw,1.55rem);line-height:1.45;padding:.35rem 0 .35rem 1.3rem;position:relative}
+li:before{content:"";position:absolute;left:0;top:1.05em;width:.5rem;height:.5rem;background:var(--acc)}
+.g{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));margin-top:.5rem}
+.c{background:var(--tint);border-top:.25rem solid var(--acc);padding:1rem 1.1rem}
+.c b{display:block;font-family:'Source Serif 4',Georgia,serif;font-size:1.25rem;margin-bottom:.3rem}
+.c span{color:var(--mut);font-size:1.02rem;line-height:1.4}
+.big{font-family:'Source Serif 4',Georgia,serif;font-size:2.2rem;color:var(--acc);font-weight:700;display:block}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:.7rem;margin:.5rem 0}
+.n{flex:1 1 11rem;background:var(--dk);color:var(--dkfg);padding:1rem;font-size:1.05rem;line-height:1.35}
+.n b{display:block;color:#5fd0c4;font-size:1.15rem;margin-bottom:.25rem}
+.ar{align-self:center;color:var(--acc);font-size:1.6rem}
+table{border-collapse:collapse;font-size:clamp(1rem,1.8vw,1.25rem);margin-top:.4rem;max-width:44rem;width:100%}
+td,th{padding:.55rem .8rem;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--acc)}
+code{font-family:'Courier New',monospace;background:var(--tint);padding:.1rem .4rem}
+.bar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;padding:1.2vh 7vw calc(1.2vh + env(safe-area-inset-bottom,0px));font-size:.95rem;color:var(--mut);background:var(--bg)}
+button{font:inherit;background:var(--acc);color:#fff;border:0;padding:.45rem 1.1rem;cursor:pointer}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+button:disabled{opacity:.4;cursor:default}
+</style></head><body>
+<div class="deck" id="d">
+
+<section class="s on">
+<h1>FIR-X</h1>
+<p class="sub">Crime intelligence from FIR data, across every district</p>
+<p class="mut">First Information Report – Intelligence Exchange · IBM Hackathon Project</p>
+</section>
+
+<section class="s">
+<h2>FIRs sit in silos</h2>
+<ul>
+<li>Thousands of FIRs are filed by station and district, and nobody sees them together.</li>
+<li>Repeat offenders who move between districts go unnoticed.</li>
+<li>Crime spikes and shared methods show up only after the damage is done.</li>
+<li>Analysts have no fast way to ask questions of the whole database.</li>
+</ul>
+</section>
+
+<section class="s">
+<h2>One searchable system for all FIRs</h2>
+<div class="g">
+<div class="c"><b>Aggregate</b><span>CCTNS data from any district or station in a single SQLite database.</span></div>
+<div class="c"><b>Detect</b><span>Repeat offenders, inter-district criminals and crime spikes flagged automatically.</span></div>
+<div class="c"><b>Visualise</b><span>Dashboards, heatmaps and co-accused network graphs.</span></div>
+<div class="c"><b>Ask</b><span>Query the live database in plain language through the Bob LLM.</span></div>
+</div>
+<p class="mut">Built for police analysts, district supervisors and crime branch investigators.</p>
+</section>
+
+<section class="s">
+<h2>How it fits together</h2>
+<div class="flow">
+<div class="n"><b>Frontend</b>Single-page HTML/JS/CSS</div><span class="ar">→</span>
+<div class="n"><b>Flask REST API</b>CRUD, import, analytics, alerts, PDF</div><span class="ar">→</span>
+<div class="n"><b>SQLite + FTS5</b>7 tables, full-text search</div>
+</div>
+<div class="flow">
+<div class="n"><b>Bob LLM proxy</b>OpenAI-compatible, grounded in live DB stats</div>
+<div class="n"><b>Bob Shell CLI</b>Terminal reports reading the same database</div>
+<div class="n"><b>Geocoding</b>Static lookup, no external API</div>
+</div>
+<p class="mut">Python 3.12 · Flask · SQLite · fpdf2 · tabulate</p>
+</section>
+
+<section class="s">
+<h2>Getting data in</h2>
+<ul>
+<li>CSV import maps 30+ header spellings and reads comma or tab files.</li>
+<li>Dates are normalised from DD-MM-YYYY, DD/MM/YYYY, DD-Mon-YYYY and more.</li>
+<li>Preview shows the mapping and warnings before anything is written.</li>
+<li>Existing FIR numbers are skipped, or replaced with <code>?overwrite=1</code>.</li>
+<li>Every create, update and status change is written to an audit trail.</li>
+</ul>
+</section>
+
+<section class="s">
+<h2>Analytics and maps</h2>
+<div class="g">
+<div class="c"><span class="big">7</span><b>Analytics endpoints</b><span>Summary, repeat offenders, inter-district, patterns, hotspots, methods, victims.</span></div>
+<div class="c"><span class="big">150</span><b>Node network graph</b><span>Co-accused links weighted by shared FIRs, plus an ego view for one person.</span></div>
+<div class="c"><span class="big">20</span><b>Districts mapped</b><span>Gujarat and Maharashtra, 50+ stations, pins and cluster heatmap.</span></div>
+</div>
+</section>
+
+<section class="s">
+<h2>Alerts and risk scoring</h2>
+<table>
+<tr><th>Alert rule</th><th>Fires when</th></tr>
+<tr><td>Repeat offender</td><td>3 or more FIRs</td></tr>
+<tr><td>District spread</td><td>3 or more districts</td></tr>
+<tr><td>Method spike</td><td>Same method in 3 districts within 60 days</td></tr>
+<tr><td>Crime spike</td><td>Up 40% month over month</td></tr>
+</table>
+<p class="mut">Each accused gets a 0–100 risk score from FIR volume (30), district spread (20), crime severity (30) and prior offences (20). 70+ is Critical, 45+ High, 25+ Medium.</p>
+</section>
+
+<section class="s">
+<h2>AI and reporting tools</h2>
+<div class="g">
+<div class="c"><b>Bob analyst chat</b><span>Each question gets a live statistics snapshot, so answers stay grounded in the data.</span></div>
+<div class="c"><b>Field extractor</b><span>Paste a CCTNS narrative and the form fills itself, using rule-based NLP.</span></div>
+<div class="c"><b>PDF reports</b><span>A per-FIR report and a full analytics report with top offenders and hotspots.</span></div>
+<div class="c"><b>Bob Shell</b><span>Terminal reports and accused search without the web UI.</span></div>
+</div>
+</section>
+
+<section class="s">
+<h2>Run it in three commands</h2>
+<ul>
+<li><code>pip install flask flask-cors fpdf2 tabulate</code></li>
+<li><code>python seed_data.py</code> loads sample data, or import the 500-FIR dataset.</li>
+<li><code>python app.py</code> serves everything at localhost:5000.</li>
+</ul>
+<p class="mut">Set BOB_API_URL, BOB_API_KEY and BOB_MODEL to turn on the AI analyst.</p>
+</section>
+
+<section class="s">
+<h1>Thank you</h1>
+<p class="sub">FIR-X turns scattered FIRs into leads an analyst can act on.</p>
+<p class="mut">Questions and live demo</p>
+</section>
+
+<div class="bar"><span id="n">1 / 10</span>
+<span><button id="p" aria-label="Previous slide">Back</button> <button id="x" aria-label="Next slide">Next</button></span></div>
+</div>
+<script>
+var s=document.querySelectorAll('.s'),i=0,n=document.getElementById('n'),p=document.getElementById('p'),x=document.getElementById('x');
+function go(k){i=Math.max(0,Math.min(s.length-1,k));s.forEach(function(e,j){e.classList.toggle('on',j===i)});
+n.textContent=(i+1)+' / '+s.length;p.disabled=i===0;x.disabled=i===s.length-1;try{location.hash=i+1}catch(e){}}
+p.onclick=function(){go(i-1)};x.onclick=function(){go(i+1)};
+document.addEventListener('keydown',function(e){if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(i+1);if(e.key==='ArrowLeft'||e.key==='PageUp')go(i-1)});
+go(parseInt(location.hash.slice(1))-1||0);
+</script></body></html>
