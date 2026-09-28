@@ -1,0 +1,2136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FIR-X | Crime Intelligence Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --card: #1c2128;
+      --border: #30363d; --text: #e6edf3; --muted: #7d8590;
+      --accent: #2563eb; --accent-light: #3b82f6;
+      --green: #238636; --yellow: #d29922; --red: #da3633;
+      --purple: #7c3aed; --teal: #0891b2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system,"Segoe UI",system-ui,sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* NAV */
+    nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 8px; position: sticky; top: 0; z-index: 100; }
+    nav .logo { font-size: 20px; font-weight: 700; color: var(--accent-light); letter-spacing: -0.5px; margin-right: 16px; }
+    nav .logo span { color: var(--text); }
+    .nav-btn { background: none; border: none; color: var(--muted); padding: 8px 14px; cursor: pointer; border-radius: 6px; font-size: 13px; font-weight: 500; transition: .15s; }
+    .nav-btn:hover, .nav-btn.active { background: var(--card); color: var(--text); }
+    .nav-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .btn-primary { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: .15s; }
+    .btn-primary:hover { background: var(--accent-light); }
+    .btn-danger  { background: var(--red); color: #fff; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .btn-ghost   { background: none; border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .btn-ghost:hover { background: var(--card); }
+
+    /* LAYOUT */
+    main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+    .page { display: none; } .page.active { display: block; }
+
+    /* STATS CARDS */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+    .stat-card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    .stat-card .value { font-size: 32px; font-weight: 700; margin-top: 4px; }
+    .stat-card .sub   { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+    /* CHARTS ROW */
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+    .chart-card h3 { font-size: 14px; color: var(--muted); margin-bottom: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .chart-card canvas { max-height: 240px; }
+
+    /* TABLE */
+    .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+    .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .table-header h2 { font-size: 15px; font-weight: 600; margin-right: auto; }
+    input[type=text], input[type=date], select {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 7px 12px; font-size: 13px; outline: none;
+    }
+    input[type=text]:focus, select:focus { border-color: var(--accent); }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 10px 14px; text-align: left; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-open  { background: rgba(218,54,51,.15); color: #f87171; }
+    .badge-inv   { background: rgba(210,153,34,.15); color: #fbbf24; }
+    .badge-cs    { background: rgba(2,132,199,.15); color: #38bdf8; }
+    .badge-closed{ background: rgba(35,134,54,.15); color: #4ade80; }
+
+    /* PAGINATION */
+    .pagination { padding: 14px 20px; display: flex; align-items: center; gap: 8px; justify-content: flex-end; border-top: 1px solid var(--border); }
+    .pagination span { color: var(--muted); font-size: 12px; }
+    .pg-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    .pg-btn:disabled { opacity: .4; cursor: default; }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; justify-content: center; align-items: flex-start; padding-top: 40px; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 780px; max-width: 96vw; padding: 28px; position: relative; }
+    .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+    .modal .close { position: absolute; top: 16px; right: 16px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1/-1; }
+    .form-group label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 8px 12px; font-size: 13px; outline: none;
+    }
+    .form-group textarea { min-height: 72px; resize: vertical; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .section-divider { grid-column: 1/-1; border: none; border-top: 1px solid var(--border); margin: 6px 0; }
+    .section-label { grid-column: 1/-1; font-size: 13px; font-weight: 700; color: var(--accent-light); }
+    .person-block { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .person-block .prow { display: grid; grid-template-columns: 1fr 1fr 80px 100px; gap: 8px; }
+    .person-block .prow2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .person-block input, .person-block select { width: 100%; }
+    .add-person-btn { background: none; border: 1px dashed var(--border); color: var(--muted); padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-top: 4px; }
+    .add-person-btn:hover { color: var(--text); border-color: var(--accent); }
+    .remove-person { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; line-height: 1; float: right; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+    /* DETAIL PANEL */
+    .detail-overlay { display: none; position: fixed; right: 0; top: 0; bottom: 0; width: 480px; background: var(--card); border-left: 1px solid var(--border); z-index: 150; overflow-y: auto; padding: 24px; }
+    .detail-overlay.open { display: block; }
+    .detail-overlay .close { float: right; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 22px; }
+    .detail-section { margin-bottom: 20px; }
+    .detail-section h4 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .kv { display: flex; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+    .kv .k { color: var(--muted); min-width: 140px; }
+    .person-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
+    .person-chip .pname { font-weight: 600; margin-bottom: 4px; }
+    .person-chip .pmeta { color: var(--muted); font-size: 12px; }
+
+    /* ANALYTICS PAGE */
+    .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .analytics-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .analytics-card .ac-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .analytics-card .ac-header h3 { font-size: 14px; font-weight: 700; }
+    .analytics-card .ac-header .icon { font-size: 18px; }
+    .analytics-card .ac-body { padding: 0; }
+    .analytics-table { width: 100%; border-collapse: collapse; }
+    .analytics-table th { padding: 9px 14px; text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .analytics-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .analytics-table tr:last-child td { border-bottom: none; }
+    .analytics-table tr:hover td { background: rgba(255,255,255,.02); }
+    .rank-badge { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; text-align: center; line-height: 22px; font-size: 11px; font-weight: 700; }
+    .rank-badge.r1 { background: #d97706; }
+    .rank-badge.r2 { background: #6b7280; }
+    .rank-badge.r3 { background: #92400e; }
+    .bar-fill { height: 6px; border-radius: 3px; background: var(--accent); transition: width .4s; }
+    .tag { display: inline-block; background: rgba(37,99,235,.15); color: var(--accent-light); border-radius: 10px; padding: 1px 7px; font-size: 11px; margin: 1px; }
+    .tag-red { background: rgba(218,54,51,.15); color: #f87171; }
+    .tag-green { background: rgba(35,134,54,.15); color: #4ade80; }
+    .tag-yellow { background: rgba(210,153,34,.15); color: #fbbf24; }
+    .full-width { grid-column: 1/-1; }
+    .chart-tall canvas { max-height: 320px; }
+
+    /* BULK ACTION BAR */
+    .bulk-bar { display:none; background:var(--surface); border:1px solid var(--accent); border-radius:8px; padding:10px 16px; margin-bottom:10px; align-items:center; gap:12px; }
+    .bulk-bar.visible { display:flex; }
+    .bulk-bar .bulk-info { font-size:13px; color:var(--accent-light); font-weight:600; }
+
+    /* RISK BADGE */
+    .risk-critical { color:#f87171; font-weight:700; }
+    .risk-high     { color:#fb923c; font-weight:700; }
+    .risk-medium   { color:#fbbf24; font-weight:600; }
+    .risk-low      { color:#4ade80; font-weight:600; }
+
+    /* TIMELINE */
+    .timeline { padding:0 4px; }
+    .tl-item { display:flex; gap:12px; margin-bottom:12px; position:relative; }
+    .tl-item::before { content:''; position:absolute; left:11px; top:22px; bottom:-12px; width:2px; background:var(--border); }
+    .tl-item:last-child::before { display:none; }
+    .tl-dot { width:24px; height:24px; border-radius:50%; background:var(--accent); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; }
+    .tl-body { flex:1; }
+    .tl-action { font-size:13px; font-weight:600; }
+    .tl-meta { font-size:11px; color:var(--muted); margin-top:2px; }
+
+    /* CSV IMPORT PAGE */
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px 24px; text-align: center; cursor: pointer; transition: .2s; background: var(--card); }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: rgba(37,99,235,.06); }
+    .upload-zone .uz-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-zone .uz-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .upload-zone .uz-sub { color: var(--muted); font-size: 13px; }
+    .upload-zone input[type=file] { display: none; }
+    .import-options { display: flex; align-items: center; gap: 18px; margin: 18px 0; padding: 16px 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+    .import-options label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+    .import-options input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+    .preview-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 18px; }
+    .preview-box h3 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 14px; }
+    .mapping-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 8px; margin-bottom: 12px; }
+    .mapping-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 12px; font-size: 12px; }
+    .mapping-chip .mc-key { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+    .mapping-chip .mc-val { font-weight: 600; color: var(--accent-light); }
+    .mapping-chip.unmapped .mc-val { color: var(--muted); font-style: italic; }
+    .import-results { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .import-results .ir-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 18px; align-items: center; }
+    .ir-stat { font-size: 13px; } .ir-stat strong { font-size: 18px; display: block; }
+    .ir-stat.ins strong { color: #4ade80; }
+    .ir-stat.ski strong { color: #fbbf24; }
+    .ir-stat.err strong { color: #f87171; }
+    .result-row-ins { background: rgba(35,134,54,.06); }
+    .result-row-skip { background: rgba(210,153,34,.06); }
+    .result-row-err  { background: rgba(218,54,51,.1); }
+
+    /* TOAST */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #1c2128; border: 1px solid var(--border); border-radius: 8px; padding: 12px 18px; font-size: 13px; z-index: 999; display: none; }
+    #toast.success { border-color: var(--green); color: #4ade80; }
+    #toast.error   { border-color: var(--red);   color: #f87171; }
+
+    /* AI ANALYST PAGE */
+    .ai-page { display: grid; grid-template-columns: 280px 1fr; gap: 16px; height: calc(100vh - 56px - 48px); min-height: 500px; }
+    .ai-sidebar { display: flex; flex-direction: column; gap: 12px; }
+    .ai-chat-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+    .ai-chat-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .ai-chat-header .ai-title { font-size: 15px; font-weight: 700; }
+    .ai-chat-header .ai-sub { font-size: 11px; color: var(--muted); }
+    .ai-status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .ai-status-dot.offline { background: var(--red); }
+    #ai-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+    .ai-msg { display: flex; gap: 10px; align-items: flex-start; max-width: 85%; }
+    .ai-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .ai-msg.bot  { align-self: flex-start; }
+    .ai-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .ai-msg.user .ai-avatar { background: var(--accent); }
+    .ai-msg.bot  .ai-avatar { background: var(--purple); }
+    .ai-bubble { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.65; }
+    .ai-msg.user .ai-bubble { background: var(--accent); border-color: var(--accent); color: #fff; border-radius: 12px 12px 2px 12px; }
+    .ai-msg.bot  .ai-bubble { border-radius: 2px 12px 12px 12px; }
+    .ai-bubble strong { color: var(--accent-light); }
+    .ai-msg.user .ai-bubble strong { color: #fff; font-weight: 700; }
+    .ai-bubble ul { padding-left: 18px; margin: 6px 0; }
+    .ai-bubble li { margin-bottom: 3px; }
+    .ai-thinking { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-style: italic; }
+    .ai-thinking span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: aiPulse 1.2s infinite; }
+    .ai-thinking span:nth-child(2) { animation-delay: .2s; }
+    .ai-thinking span:nth-child(3) { animation-delay: .4s; }
+    @keyframes aiPulse { 0%,80%,100% { opacity:.3; transform:scale(.8); } 40% { opacity:1; transform:scale(1); } }
+    .ai-input-row { padding: 14px 18px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+    #ai-input { flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 10px 14px; font-size: 13px; outline: none; resize: none; min-height: 44px; max-height: 120px; font-family: inherit; line-height: 1.5; }
+    #ai-input:focus { border-color: var(--accent); }
+    .ai-send-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; width: 44px; height: 44px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: .15s; }
+    .ai-send-btn:hover { background: var(--accent-light); }
+    .ai-send-btn:disabled { opacity: .4; cursor: default; }
+    .ai-sidebar-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .ai-sidebar-card h4 { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 10px; }
+    .ai-suggestion { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; font-size: 12px; cursor: pointer; margin-bottom: 6px; line-height: 1.4; transition: .15s; }
+    .ai-suggestion:hover { border-color: var(--accent); color: var(--accent-light); }
+    .ai-meta-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; }
+    @media(max-width:900px) {
+      .ai-page { grid-template-columns: 1fr; height: auto; }
+      .ai-chat-wrap { height: 500px; }
+      .ai-sidebar { order: -1; }
+      .charts-row, .analytics-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .modal { padding: 18px; }
+      .detail-overlay { width: 100%; }
+      #page-network > div[style*="grid-template-columns:1fr 340px"] {
+        grid-template-columns: 1fr !important; height: auto !important;
+      }
+      #network-container { height: 400px !important; }
+      #net-sidebar { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">FIR<span>-X</span></div>
+  <button class="nav-btn active" onclick="showPage('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="showPage('firs')">📋 FIR Database</button>
+  <button class="nav-btn" onclick="showPage('analytics')">🔍 Analytics</button>
+  <button class="nav-btn" onclick="showPage('map')">🗺️ Heatmap</button>
+  <button class="nav-btn" onclick="showPage('network')">🔗 Network</button>
+  <button class="nav-btn" onclick="showPage('import')">📥 Import CSV</button>
+  <button class="nav-btn" onclick="showPage('ai')">🤖 AI Analyst</button>
+  <div class="nav-right">
+    <button class="btn-ghost" id="alert-btn" onclick="openAlerts()" style="position:relative">
+      🔔 Alerts <span id="alert-badge" style="display:none;position:absolute;top:4px;right:4px;background:#da3633;color:#fff;border-radius:50%;width:16px;height:16px;font-size:10px;text-align:center;line-height:16px">0</span>
+    </button>
+    <button class="btn-primary" onclick="openAddFIR()">+ New FIR</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ══════════════ DASHBOARD PAGE ══════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="label">Total FIRs</div><div class="value" id="s-total">—</div><div class="sub">All registered cases</div></div>
+    <div class="stat-card"><div class="label">Open Cases</div><div class="value" id="s-open" style="color:#f87171">—</div><div class="sub">Awaiting action</div></div>
+    <div class="stat-card"><div class="label">Accused</div><div class="value" id="s-accused">—</div><div class="sub">Total persons</div></div>
+    <div class="stat-card"><div class="label">Victims</div><div class="value" id="s-victims">—</div><div class="sub">Total persons</div></div>
+    <div class="stat-card"><div class="label">Districts</div><div class="value" id="s-districts">—</div><div class="sub">Covered</div></div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card"><h3>Crime Distribution</h3><canvas id="chart-crime"></canvas></div>
+    <div class="chart-card"><h3>Monthly FIR Trend (Last 12 Months)</h3><canvas id="chart-trend"></canvas></div>
+  </div>
+</div>
+
+<!-- ══════════════ FIR DATABASE PAGE ══════════════ -->
+<div class="page" id="page-firs">
+  <div class="table-card">
+    <div class="table-header">
+      <h2>FIR Database</h2>
+      <div style="position:relative;display:inline-block">
+        <input type="text" id="search-box" placeholder="Search FIR, crime, district…" style="width:230px" oninput="debounceSearch()" autocomplete="off">
+        <div id="search-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:6px;z-index:50;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <select id="f-district" onchange="loadFIRs(1)"><option value="">All Districts</option></select>
+      <select id="f-crime" onchange="loadFIRs(1)">
+        <option value="">All Crimes</option>
+        <option>Theft</option><option>Robbery</option><option>Burglary</option>
+        <option>Murder</option><option>Assault</option><option>Kidnapping</option>
+        <option>Fraud</option><option>Cybercrime</option><option>Drug Trafficking</option>
+        <option>Vehicle Theft</option><option>Chain Snatching</option><option>Extortion</option>
+      </select>
+      <select id="f-status" onchange="loadFIRs(1)">
+        <option value="">All Status</option>
+        <option>Open</option><option>Under Investigation</option>
+        <option>Chargesheeted</option><option>Closed</option>
+      </select>
+      <input type="date" id="f-from" onchange="loadFIRs(1)">
+      <input type="date" id="f-to" onchange="loadFIRs(1)">
+      <button class="btn-ghost" onclick="exportFIRsCSV()" title="Export current filter as CSV" style="margin-left:4px">⬇ Export CSV</button>
+    </div>
+
+    <!-- Bulk action bar (shown when rows are checked) -->
+    <div class="bulk-bar" id="bulk-bar">
+      <span class="bulk-info"><span id="bulk-count">0</span> selected</span>
+      <span style="color:var(--muted);font-size:12px">Change status to:</span>
+      <select id="bulk-status-sel" style="font-size:12px;padding:4px 8px">
+        <option>Open</option><option>Under Investigation</option>
+        <option>Chargesheeted</option><option>Closed</option>
+      </select>
+      <button class="btn-primary" style="font-size:12px;padding:5px 12px" onclick="applyBulkStatus()">Apply</button>
+      <button class="btn-ghost" style="font-size:12px;padding:5px 10px" onclick="clearSelection()">Clear</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:32px"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" title="Select all"></th>
+          <th>FIR Number</th><th>Date</th><th>Crime Type</th>
+          <th>District</th><th>Police Station</th>
+          <th>Modus Operandi</th><th>Location</th><th>Status</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="fir-tbody"></tbody>
+    </table>
+    <div class="pagination">
+      <span id="pg-info"></span>
+      <button class="pg-btn" id="pg-prev" onclick="loadFIRs(currentPage-1)" disabled>‹ Prev</button>
+      <button class="pg-btn" id="pg-next" onclick="loadFIRs(currentPage+1)">Next ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ ANALYTICS PAGE ══════════════ -->
+<div class="page" id="page-analytics">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <a href="/api/analytics/report/pdf" target="_blank" class="btn-ghost" style="text-decoration:none;font-size:12px">📄 Download Analytics PDF</a>
+  </div>
+  <div class="analytics-grid">
+
+    <!-- Repeated Offenders -->
+    <div class="analytics-card">
+      <div class="ac-header"><span class="icon">🔁</span><h3>Repeat Offenders</h3></div>
+      <div class="ac-body"><table class="analytics-table">
+        <thead><tr><th>#</th><th>Name</th><th>FIRs</th><th>Crime Types</th><th>Districts</th></tr></thead>
+        <tbody id="at-repeat"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Inter-district Offenders -->
+    <div class="analytics-card">
+      <div class="ac-header"><span class="icon">🗺️</span><h3>Inter-District Offenders</h3></div>
+      <div class="ac-body"><table class="analytics-table">
+        <thead><tr><th>#</th><th>Name</th><th>Districts</th><th>FIRs</th><th>Crimes</th></tr></thead>
+        <tbody id="at-interdist"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Hotspots -->
+    <div class="analytics-card">
+      <div class="ac-header"><span class="icon">🔥</span><h3>Crime Hotspots</h3></div>
+      <div class="ac-body"><table class="analytics-table">
+        <thead><tr><th>#</th><th>District</th><th>Station</th><th>FIRs</th><th>Bar</th></tr></thead>
+        <tbody id="at-hotspots"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Top Modus Operandi -->
+    <div class="analytics-card">
+      <div class="ac-header"><span class="icon">🎭</span><h3>Top Modus Operandi</h3></div>
+      <div class="ac-body"><table class="analytics-table">
+        <thead><tr><th>#</th><th>Modus Operandi</th><th>Count</th><th>Crimes</th></tr></thead>
+        <tbody id="at-mo"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Rising Crime Pattern Chart -->
+    <div class="analytics-card full-width chart-tall">
+      <div class="ac-header"><span class="icon">📈</span><h3>Rising Crime Patterns (Monthly Trend by Type)</h3></div>
+      <div style="padding:18px"><canvas id="chart-patterns"></canvas></div>
+    </div>
+
+    <!-- Victim Demographics -->
+    <div class="analytics-card full-width" id="card-victim-demo">
+      <div class="ac-header"><span class="icon">🙍</span><h3>Victim Demographics</h3></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0">
+
+        <!-- Gender split -->
+        <div style="padding:16px;border-right:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">By Gender</div>
+          <div id="vd-gender"></div>
+        </div>
+
+        <!-- Injury severity -->
+        <div style="padding:16px;border-right:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">By Injury</div>
+          <div id="vd-injury"></div>
+        </div>
+
+        <!-- Age groups -->
+        <div style="padding:16px;border-right:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">By Age Group</div>
+          <div id="vd-age"></div>
+        </div>
+
+        <!-- Crime type -->
+        <div style="padding:16px">
+          <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px">Victims by Crime</div>
+          <div id="vd-crime"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ CSV IMPORT PAGE ══════════════ -->
+<div class="page" id="page-import">
+
+  <!-- Drop zone -->
+  <div class="upload-zone" id="drop-zone" onclick="document.getElementById('csv-file-input').click()">
+    <div class="uz-icon">📂</div>
+    <div class="uz-title">Drop your CSV file here or click to browse</div>
+    <div class="uz-sub" id="drop-filename">Accepts .csv files — columns auto-detected and normalised</div>
+    <input type="file" id="csv-file-input" accept=".csv" onchange="onFileSelected(this.files[0])">
+  </div>
+
+  <!-- Options -->
+  <div class="import-options">
+    <label>
+      <input type="checkbox" id="opt-overwrite">
+      <span><strong>Overwrite duplicates</strong> — replace existing FIRs with the same FIR number instead of skipping them</span>
+    </label>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn-ghost" id="btn-preview" onclick="runPreview()" disabled>Preview</button>
+      <button class="btn-primary" id="btn-import" onclick="runImport()" disabled>Import to Database</button>
+    </div>
+  </div>
+
+  <!-- AI FIR Summariser panel -->
+  <div class="preview-box" style="margin-bottom:18px">
+    <h3>🤖 AI FIR Summariser — Auto-extract fields from narrative text</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Paste a raw FIR narrative or CCTNS text below. The AI will extract crime type, accused, modus operandi, location and victim profile automatically.</div>
+    <textarea id="ai-text-input" style="width:100%;min-height:90px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:10px;font-size:13px;font-family:inherit;resize:vertical" placeholder="Paste FIR narrative here… e.g. Complainant reported a burglary incident at residential flat. Accused person was described as Rajan Shah. Modus operandi: used duplicate keys. Victim profile: family residence."></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-start">
+      <button class="btn-primary" onclick="runAIExtract()">Extract Fields</button>
+      <button class="btn-ghost" onclick="applyExtracted()" id="btn-apply-ai" disabled>Apply to New FIR Form</button>
+    </div>
+    <div id="ai-result" style="margin-top:12px;display:none">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Extracted Fields</div>
+      <div id="ai-fields" class="mapping-grid"></div>
+    </div>
+  </div>
+
+  <!-- Column mapping preview (shown after file selected) -->
+  <div class="preview-box" id="preview-mapping" style="display:none">
+    <h3>Detected Column Mapping</h3>
+    <div class="mapping-grid" id="mapping-grid"></div>
+    <div id="preview-unmapped"></div>
+    <div id="preview-sample"></div>
+  </div>
+
+  <!-- Import results (shown after import) -->
+  <div class="import-results" id="import-results" style="display:none">
+    <div class="ir-header">
+      <div class="ir-stat ins"><strong id="ir-ins">0</strong>Inserted</div>
+      <div class="ir-stat ski"><strong id="ir-ski">0</strong>Skipped</div>
+      <div class="ir-stat err"><strong id="ir-err">0</strong>Errors</div>
+      <div style="margin-left:auto">
+        <button class="btn-ghost" onclick="document.getElementById('import-results').style.display='none'">Dismiss</button>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="padding:9px 14px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface)">Row</th>
+          <th style="padding:9px 14px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface)">FIR Number</th>
+          <th style="padding:9px 14px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface)">Status</th>
+          <th style="padding:9px 14px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface)">Message</th>
+        </tr>
+      </thead>
+      <tbody id="ir-tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════════ HEATMAP PAGE ══════════════ -->
+<div class="page" id="page-map">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <h2 style="font-size:17px;font-weight:700">Crime Heatmap</h2>
+      <div style="color:var(--muted);font-size:12px;margin-top:2px">Bubble size = FIR count at that station. Click bubble for details. Toggle view with buttons.</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="map-crime-filter" onchange="filterMapPins()" style="width:180px">
+        <option value="">All Crime Types</option>
+      </select>
+      <select id="map-status-filter" onchange="filterMapPins()">
+        <option value="">All Status</option>
+        <option>Open</option><option>Under Investigation</option><option>Chargesheeted</option><option>Closed</option>
+      </select>
+      <button class="btn-ghost" id="map-mode-btn" onclick="toggleMapMode()" style="font-size:12px">Switch to Pins</button>
+    </div>
+  </div>
+  <div id="map-container" style="height:560px;min-height:560px;border-radius:10px;border:1px solid var(--border);position:relative;">
+    <div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--card);z-index:10;font-size:13px;color:var(--muted)">
+      Loading map…
+    </div>
+  </div>
+  <div id="map-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-size:12px;color:var(--muted)"></div>
+</div>
+
+<!-- ══════════════ NETWORK GRAPH PAGE ══════════════ -->
+<div class="page" id="page-network">
+  <!-- Search bar -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🔍 Search Accused to Explore Their Network</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div style="position:relative;flex:1;min-width:240px">
+        <input type="text" id="net-search" placeholder="Type accused name (e.g. Ravi Kumar)…"
+               style="width:100%;padding:9px 14px;font-size:13px"
+               oninput="netSearchInput()" autocomplete="off">
+        <div id="net-suggest" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:6px;z-index:50;max-height:220px;overflow-y:auto"></div>
+      </div>
+      <button class="btn-primary" onclick="loadEgoNetwork()">Show Network</button>
+      <button class="btn-ghost" onclick="loadNetwork()">Full Network</button>
+      <span style="font-size:12px;color:var(--muted)" id="net-info"></span>
+    </div>
+    <!-- Top accused quick-select chips -->
+    <div id="net-top-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px"></div>
+  </div>
+
+  <!-- Split layout: graph left, FIR sidebar right -->
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:14px;height:540px">
+    <div id="network-container" style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;height:540px"></div>
+    <div id="net-sidebar" style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow-y:auto;padding:16px">
+      <div style="font-size:12px;color:var(--muted);text-align:center;padding-top:40px" id="net-sidebar-hint">
+        Search for an accused above or click a node to see their FIR history here.
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div style="display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--muted);align-items:center">
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#f59e0b;display:inline-block;border:2px solid #fbbf24"></span>Selected (ego node)</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#da3633;display:inline-block"></span>3+ FIRs (repeat)</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:50%;background:#2563eb;display:inline-block"></span>Regular accused</span>
+    <span style="color:var(--muted)">· Drag nodes · Scroll to zoom · Click node for details</span>
+  </div>
+</div>
+
+<!-- ══════════════ AI ANALYST PAGE ══════════════ -->
+<div class="page" id="page-ai">
+  <div class="ai-page">
+
+    <!-- Left sidebar: suggested questions + DB stats -->
+    <div class="ai-sidebar">
+
+      <div class="ai-sidebar-card">
+        <h4>💡 Suggested Questions</h4>
+        <div id="ai-suggestions">
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">What are the top crime types by volume?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Which district has the most FIRs?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Who are the top repeat offenders and what crimes do they commit?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Show me crime trends over the last few months</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Which accused operates across multiple districts?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">What is the most common modus operandi?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">What percentage of FIRs are still open?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Analyse victim demographics — gender and age breakdown</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Which crimes have the lowest closure rate?</div>
+          <div class="ai-suggestion" onclick="aiAskSuggestion(this)">Give me a full intelligence summary of the database</div>
+        </div>
+      </div>
+
+      <div class="ai-sidebar-card">
+        <h4>⚙️ Configuration</h4>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6">
+          Bob LLM is called via the OpenAI-compatible inference proxy.<br><br>
+          Set environment variables before starting the server:
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:8px;margin-top:8px;font-family:monospace;font-size:10px;color:#4ade80;line-height:1.8">
+            BOB_API_URL=http://localhost:4000<br>
+            BOB_API_KEY=your-api-key<br>
+            BOB_MODEL=bob
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Chat window -->
+    <div class="ai-chat-wrap">
+      <div class="ai-chat-header">
+        <div class="ai-status-dot" id="ai-dot"></div>
+        <div>
+          <div class="ai-title">🤖 FIR-X AI Analyst</div>
+          <div class="ai-sub">Powered by IBM Bob LLM · Database context loaded on every query</div>
+        </div>
+        <button class="btn-ghost" style="margin-left:auto;font-size:11px" onclick="aiClearChat()">Clear chat</button>
+      </div>
+
+      <div id="ai-messages">
+        <!-- Welcome message -->
+        <div class="ai-msg bot">
+          <div class="ai-avatar">🤖</div>
+          <div class="ai-bubble">
+            <strong>Hello, Analyst.</strong><br>
+            I'm your AI-powered crime database analyst. I have real-time access to your FIR database and can answer questions about:<br>
+            <ul>
+              <li>Crime trends and patterns over time</li>
+              <li>District-wise and station-wise analysis</li>
+              <li>Repeat offenders and high-risk accused</li>
+              <li>Victim demographics and injury profiles</li>
+              <li>Modus operandi patterns</li>
+              <li>Case closure and investigation status</li>
+            </ul>
+            Ask me anything — or pick a suggestion from the left panel.
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-input-row">
+        <textarea id="ai-input" placeholder="Ask anything about the crime database… e.g. Which district has the most unsolved murders?" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+        <button class="ai-send-btn" id="ai-send-btn" onclick="aiSend()" title="Send (Enter)">➤</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+</main>
+
+<!-- ══════════════ ALERTS PANEL ══════════════ -->
+<div class="detail-overlay" id="alerts-panel" style="width:420px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <h2 style="font-size:16px;font-weight:700">Intelligence Alerts</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn-ghost" style="font-size:11px" onclick="markAllRead()">Mark all read</button>
+      <button class="close" onclick="document.getElementById('alerts-panel').classList.remove('open')">×</button>
+    </div>
+  </div>
+  <div id="alerts-list"></div>
+</div>
+
+<!-- ══════════════ ADD/EDIT FIR MODAL ══════════════ -->
+<div class="modal-overlay" id="fir-modal">
+  <div class="modal">
+    <button class="close" onclick="closeModal()">×</button>
+    <h2 id="modal-title">Register New FIR</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>FIR Number *</label><input id="f-fir_number" placeholder="FIR/MUM/2024/0001"></div>
+      <div class="form-group"><label>Date of FIR *</label><input type="date" id="f-date_of_fir"></div>
+      <div class="form-group"><label>Date of Offence</label><input type="date" id="f-date_of_offence"></div>
+      <div class="form-group"><label>Crime Type *</label>
+        <select id="f-crime_type">
+          <option value="">-- Select --</option>
+          <option>Theft</option><option>Robbery</option><option>Burglary</option>
+          <option>Murder</option><option>Assault</option><option>Kidnapping</option>
+          <option>Fraud</option><option>Cybercrime</option><option>Drug Trafficking</option>
+          <option>Vehicle Theft</option><option>Chain Snatching</option><option>Extortion</option>
+        </select>
+      </div>
+      <div class="form-group"><label>District *</label><input id="f-district-input" placeholder="e.g. Mumbai"></div>
+      <div class="form-group"><label>Police Station *</label><input id="f-station-input" placeholder="e.g. Andheri"></div>
+      <div class="form-group"><label>Section of Law</label><input id="f-section_of_law" placeholder="IPC 302, NDPS Act…"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="f-status-input">
+          <option>Open</option><option>Under Investigation</option>
+          <option>Chargesheeted</option><option>Closed</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Modus Operandi</label><input id="f-modus_operandi" placeholder="Brief description of method used"></div>
+      <div class="form-group full"><label>Location / Scene of Offence</label><input id="f-location" placeholder="e.g. shop, online messaging platform, fake profile…"></div>
+      <div class="form-group full"><label>Description / Raw Text</label><textarea id="f-description" placeholder="Full case narrative…"></textarea></div>
+
+      <hr class="section-divider">
+      <div class="section-label">👤 Accused</div>
+      <div class="full-width" id="accused-blocks"></div>
+      <button class="add-person-btn full-width" onclick="addAccusedBlock()">+ Add Accused</button>
+
+      <hr class="section-divider">
+      <div class="section-label">🙍 Victims</div>
+      <div class="full-width" id="victim-blocks"></div>
+      <button class="add-person-btn full-width" onclick="addVictimBlock()">+ Add Victim</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitFIR()">Save FIR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ FIR DETAIL PANEL ══════════════ -->
+<div class="detail-overlay" id="detail-panel">
+  <button class="close" onclick="closeDetail()">×</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ══════════════ ACCUSED PROFILE MODAL ══════════════ -->
+<div class="modal-overlay" id="accused-modal">
+  <div class="modal" style="width:860px">
+    <button class="close" onclick="document.getElementById('accused-modal').classList.remove('open')">×</button>
+    <h2 id="accused-modal-title">Accused Profile</h2>
+    <div id="accused-modal-body"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = "";
+let currentPage = 1;
+let totalFIRs   = 0;
+let editingFIRId = null;
+let searchTimer = null;
+
+// ── Page navigation ──────────────────────────────────────────────────────────
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type="success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.className = type; t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3000);
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+let crimeChart, trendChart, patternChart;
+
+async function loadDashboard() {
+  const d = await fetch(API + "/api/analytics/summary").then(r => r.json());
+  document.getElementById("s-total").textContent    = d.total_firs;
+  document.getElementById("s-open").textContent     = d.open_firs;
+  document.getElementById("s-accused").textContent  = d.total_accused;
+  document.getElementById("s-victims").textContent  = d.total_victims;
+  document.getElementById("s-districts").textContent= d.districts;
+
+  // Crime distribution doughnut
+  const cdCtx = document.getElementById("chart-crime").getContext("2d");
+  if (crimeChart) crimeChart.destroy();
+  crimeChart = new Chart(cdCtx, {
+    type: "doughnut",
+    data: {
+      labels: d.crime_distribution.map(x => x.crime_type),
+      datasets: [{ data: d.crime_distribution.map(x => x.count),
+        backgroundColor: ["#2563eb","#7c3aed","#0891b2","#d97706","#16a34a",
+                          "#dc2626","#9333ea","#0284c7","#ca8a04","#15803d"] }]
+    },
+    options: { plugins: { legend: { labels: { color: "#e6edf3", font: { size: 12 } } } } }
+  });
+
+  // Monthly trend line
+  const reversed = [...d.monthly_trend].reverse();
+  const mtCtx = document.getElementById("chart-trend").getContext("2d");
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(mtCtx, {
+    type: "line",
+    data: {
+      labels: reversed.map(x => x.month),
+      datasets: [{ label: "FIRs", data: reversed.map(x => x.count),
+        borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,.15)",
+        fill: true, tension: 0.35, pointRadius: 4 }]
+    },
+    options: {
+      scales: { x: { ticks: { color: "#7d8590" }, grid: { color: "#30363d" } },
+                y: { ticks: { color: "#7d8590" }, grid: { color: "#30363d" } } },
+      plugins: { legend: { labels: { color: "#e6edf3" } } }
+    }
+  });
+}
+
+// ── Districts filter ─────────────────────────────────────────────────────────
+async function loadDistricts() {
+  const list = await fetch(API + "/api/districts").then(r => r.json());
+  const sel  = document.getElementById("f-district");
+  sel.innerHTML = '<option value="">All Districts</option>';
+  list.forEach(d => sel.innerHTML += `<option>${d.name}</option>`);
+}
+
+// ── FIR List ─────────────────────────────────────────────────────────────────
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadFIRs(1), 350);
+}
+
+async function loadFIRs(page=1) {
+  currentPage = page;
+  const params = new URLSearchParams({
+    page, limit: 20,
+    search:    document.getElementById("search-box").value,
+    district:  document.getElementById("f-district").value,
+    crime_type:document.getElementById("f-crime").value,
+    status:    document.getElementById("f-status").value,
+    from_date: document.getElementById("f-from").value,
+    to_date:   document.getElementById("f-to").value,
+  });
+  const data = await fetch(API + "/api/firs?" + params).then(r => r.json());
+  totalFIRs = data.total;
+  const tbody = document.getElementById("fir-tbody");
+  tbody.innerHTML = "";
+  selectedIds.clear();
+  updateBulkBar();
+  if (!data.data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">No records found</td></tr>';
+  } else {
+    data.data.forEach(f => {
+      const badge = statusBadge(f.status);
+      tbody.innerHTML += `
+        <tr data-id="${f.id}">
+          <td><input type="checkbox" class="row-check" value="${f.id}" onchange="onRowCheck(this)"></td>
+          <td style="font-weight:600;color:var(--accent-light)">${f.fir_number}</td>
+          <td>${f.date_of_fir}</td>
+          <td>${f.crime_type}</td>
+          <td>${f.district_name}</td>
+          <td>${f.station_name}</td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.modus_operandi||'—'}</td>
+          <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.location||'—'}</td>
+          <td>${badge}</td>
+          <td>
+            <button class="btn-ghost" style="margin-right:4px" onclick="viewFIR(${f.id})">View</button>
+            <button class="btn-ghost" style="margin-right:4px" onclick="editFIR(${f.id})">Edit</button>
+            <button class="btn-ghost" style="margin-right:4px" onclick="window.open('/api/firs/${f.id}/pdf','_blank')" title="Download PDF">PDF</button>
+            <button class="btn-danger" onclick="deleteFIR(${f.id},'${f.fir_number}')">Del</button>
+          </td>
+        </tr>`;
+    });
+  }
+  const shown = Math.min(page * 20, totalFIRs);
+  const from  = (page - 1) * 20 + 1;
+  document.getElementById("pg-info").textContent = totalFIRs > 0 ? `${from}–${shown} of ${totalFIRs}` : "0 records";
+  document.getElementById("pg-prev").disabled = page <= 1;
+  document.getElementById("pg-next").disabled = shown >= totalFIRs;
+}
+
+function statusBadge(s) {
+  const cls = s === "Open" ? "badge-open" : s === "Under Investigation" ? "badge-inv" : s === "Chargesheeted" ? "badge-cs" : "badge-closed";
+  return `<span class="badge ${cls}">${s}</span>`;
+}
+
+// ── View FIR Detail ──────────────────────────────────────────────────────────
+async function viewFIR(id) {
+  const [f, timeline] = await Promise.all([
+    fetch(API + "/api/firs/" + id).then(r => r.json()),
+    fetch(API + "/api/firs/" + id + "/timeline").then(r => r.json()),
+  ]);
+  const panel = document.getElementById("detail-panel");
+
+  const ACTION_ICON = { created:"✅", updated:"✏️", status_changed:"🔄", deleted:"🗑️" };
+  const tlHtml = timeline.length ? `
+    <div class="detail-section">
+      <h4>Case Timeline</h4>
+      <div class="timeline">
+        ${timeline.map(e => `
+          <div class="tl-item">
+            <div class="tl-dot">${ACTION_ICON[e.action]||"📌"}</div>
+            <div class="tl-body">
+              <div class="tl-action">${e.action.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())}
+                ${e.old_status&&e.new_status&&e.old_status!==e.new_status ?
+                  `<span style="color:var(--muted);font-weight:400"> — ${e.old_status} → ${e.new_status}</span>` : ""}
+              </div>
+              <div class="tl-meta">${(e.created_at||"").slice(0,16)} · ${e.actor}</div>
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>` : "";
+
+  document.getElementById("detail-content").innerHTML = `
+    <h2 style="margin-bottom:6px">${f.fir_number}</h2>
+    <div style="margin-bottom:18px">${statusBadge(f.status)}</div>
+    <div class="detail-section">
+      <h4>Case Details</h4>
+      ${kv("Crime Type", f.crime_type)}
+      ${kv("Date of FIR", f.date_of_fir)}
+      ${kv("Date of Offence", f.date_of_offence||'—')}
+      ${kv("District", f.district_name)}
+      ${kv("Police Station", f.station_name)}
+      ${kv("Section of Law", f.section_of_law||'—')}
+      ${kv("Location / Scene", f.location||'—')}
+      ${kv("Modus Operandi", f.modus_operandi||'—')}
+    </div>
+    ${f.description ? `<div class="detail-section"><h4>Raw Text / Narrative</h4><p style="font-size:13px;line-height:1.6;color:var(--muted)">${f.description}</p></div>` : ""}
+    <div class="detail-section">
+      <h4>Accused (${f.accused.length})</h4>
+      ${f.accused.map(a => `
+        <div class="person-chip">
+          <div class="pname">
+            <button onclick="viewAccusedProfile('${a.name.replace(/'/g,"\\'")}');closeDetail()" style="background:none;border:none;color:var(--accent-light);cursor:pointer;font-weight:600;font-size:13px;padding:0">${a.name}</button>
+            ${a.alias ? `<span style="color:var(--muted)">(${a.alias})</span>` : ''}
+          </div>
+          <div class="pmeta">Age: ${a.age||'?'} | ${a.gender} | ${a.occupation||'—'} | Prior offences: ${a.prior_offences}</div>
+        </div>`).join("") || '<p style="color:var(--muted);font-size:13px">No accused recorded</p>'}
+    </div>
+    <div class="detail-section">
+      <h4>Victims (${f.victims.length})</h4>
+      ${f.victims.map(v => `<div class="person-chip"><div class="pname">${v.name}</div><div class="pmeta">Age: ${v.age||'?'} | ${v.gender} | Injury: ${v.injury_type}</div></div>`).join("") || '<p style="color:var(--muted);font-size:13px">No victim recorded</p>'}
+    </div>
+    ${tlHtml}
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn-primary" onclick="editFIR(${f.id}); closeDetail()">Edit FIR</button>
+      <button class="btn-ghost" onclick="window.open('/api/firs/${f.id}/pdf','_blank')">Download PDF</button>
+      <button class="btn-ghost" onclick="closeDetail()">Close</button>
+    </div>
+  `;
+  panel.classList.add("open");
+}
+function kv(k, v) { return `<div class="kv"><span class="k">${k}</span><span>${v}</span></div>`; }
+function closeDetail() { document.getElementById("detail-panel").classList.remove("open"); }
+
+// ── Delete FIR ───────────────────────────────────────────────────────────────
+async function deleteFIR(id, number) {
+  if (!confirm(`Delete FIR ${number}? This cannot be undone.`)) return;
+  await fetch(API + "/api/firs/" + id, { method: "DELETE" });
+  toast("FIR deleted");
+  loadFIRs(currentPage);
+  loadDashboard();
+}
+
+// ── Add / Edit FIR ───────────────────────────────────────────────────────────
+function openAddFIR() {
+  editingFIRId = null;
+  document.getElementById("modal-title").textContent = "Register New FIR";
+  document.getElementById("f-fir_number").value = "";
+  document.getElementById("f-date_of_fir").value = new Date().toISOString().split("T")[0];
+  document.getElementById("f-date_of_offence").value = "";
+  document.getElementById("f-crime_type").value = "";
+  document.getElementById("f-district-input").value = "";
+  document.getElementById("f-station-input").value = "";
+  document.getElementById("f-section_of_law").value = "";
+  document.getElementById("f-status-input").value = "Open";
+  document.getElementById("f-modus_operandi").value = "";
+  document.getElementById("f-location").value = "";
+  document.getElementById("f-description").value = "";
+  document.getElementById("accused-blocks").innerHTML = "";
+  document.getElementById("victim-blocks").innerHTML = "";
+  addAccusedBlock();
+  addVictimBlock();
+  document.getElementById("fir-modal").classList.add("open");
+}
+
+async function editFIR(id) {
+  const f = await fetch(API + "/api/firs/" + id).then(r => r.json());
+  editingFIRId = id;
+  document.getElementById("modal-title").textContent = "Edit FIR – " + f.fir_number;
+  document.getElementById("f-fir_number").value      = f.fir_number;
+  document.getElementById("f-date_of_fir").value     = f.date_of_fir;
+  document.getElementById("f-date_of_offence").value = f.date_of_offence || "";
+  document.getElementById("f-crime_type").value      = f.crime_type;
+  document.getElementById("f-district-input").value  = f.district_name;
+  document.getElementById("f-station-input").value   = f.station_name;
+  document.getElementById("f-section_of_law").value  = f.section_of_law || "";
+  document.getElementById("f-status-input").value    = f.status;
+  document.getElementById("f-modus_operandi").value  = f.modus_operandi || "";
+  document.getElementById("f-location").value        = f.location || "";
+  document.getElementById("f-description").value     = f.description || "";
+
+  document.getElementById("accused-blocks").innerHTML = "";
+  document.getElementById("victim-blocks").innerHTML  = "";
+  f.accused.forEach(a => addAccusedBlock(a));
+  f.victims.forEach(v => addVictimBlock(v));
+  if (!f.accused.length) addAccusedBlock();
+  if (!f.victims.length) addVictimBlock();
+
+  document.getElementById("fir-modal").classList.add("open");
+}
+
+function closeModal() { document.getElementById("fir-modal").classList.remove("open"); }
+
+// Person blocks
+let accIdx = 0, vicIdx = 0;
+function addAccusedBlock(data={}) {
+  const i = accIdx++;
+  const div = document.createElement("div");
+  div.className = "person-block";
+  div.id = "acc-" + i;
+  div.innerHTML = `
+    <button class="remove-person" onclick="document.getElementById('acc-${i}').remove()">×</button>
+    <div class="prow">
+      <input placeholder="Full Name *" id="acc-name-${i}" value="${data.name||''}">
+      <input placeholder="Alias / Nick" id="acc-alias-${i}" value="${data.alias||''}">
+      <input type="number" placeholder="Age" id="acc-age-${i}" value="${data.age||''}">
+      <select id="acc-gender-${i}">
+        <option value="Unknown"${!data.gender||data.gender==='Unknown'?' selected':''}>Gender</option>
+        <option value="Male"${data.gender==='Male'?' selected':''}>Male</option>
+        <option value="Female"${data.gender==='Female'?' selected':''}>Female</option>
+        <option value="Other"${data.gender==='Other'?' selected':''}>Other</option>
+      </select>
+    </div>
+    <div class="prow2">
+      <input placeholder="Address" id="acc-address-${i}" value="${data.address||''}">
+      <input placeholder="Occupation" id="acc-occ-${i}" value="${data.occupation||''}">
+      <input placeholder="Home District" id="acc-dist-${i}" value="${data.district||''}">
+      <input placeholder="Mobile" id="acc-mob-${i}" value="${data.mobile_number||''}">
+    </div>`;
+  document.getElementById("accused-blocks").appendChild(div);
+}
+
+function addVictimBlock(data={}) {
+  const i = vicIdx++;
+  const div = document.createElement("div");
+  div.className = "person-block";
+  div.id = "vic-" + i;
+  div.innerHTML = `
+    <button class="remove-person" onclick="document.getElementById('vic-${i}').remove()">×</button>
+    <div class="prow">
+      <input placeholder="Full Name *" id="vic-name-${i}" value="${data.name||''}">
+      <input placeholder="Occupation" id="vic-occ-${i}" value="${data.occupation||''}">
+      <input type="number" placeholder="Age" id="vic-age-${i}" value="${data.age||''}">
+      <select id="vic-gender-${i}">
+        <option value="Unknown"${!data.gender||data.gender==='Unknown'?' selected':''}>Gender</option>
+        <option value="Male"${data.gender==='Male'?' selected':''}>Male</option>
+        <option value="Female"${data.gender==='Female'?' selected':''}>Female</option>
+      </select>
+    </div>
+    <div class="prow2">
+      <input placeholder="Address" id="vic-address-${i}" value="${data.address||''}">
+      <select id="vic-injury-${i}">
+        <option value="Unknown"${!data.injury_type||data.injury_type==='Unknown'?' selected':''}>Injury</option>
+        <option value="None"${data.injury_type==='None'?' selected':''}>None</option>
+        <option value="Minor"${data.injury_type==='Minor'?' selected':''}>Minor</option>
+        <option value="Grievous"${data.injury_type==='Grievous'?' selected':''}>Grievous</option>
+        <option value="Fatal"${data.injury_type==='Fatal'?' selected':''}>Fatal</option>
+      </select>
+      <input placeholder="Mobile" id="vic-mob-${i}" value="${data.mobile_number||''}">
+    </div>`;
+  document.getElementById("victim-blocks").appendChild(div);
+}
+
+function collectAccused() {
+  return [...document.getElementById("accused-blocks").querySelectorAll(".person-block")]
+    .map(b => {
+      const i = b.id.split("-")[1];
+      return { name: document.getElementById("acc-name-"+i).value,
+               alias: document.getElementById("acc-alias-"+i).value,
+               age: parseInt(document.getElementById("acc-age-"+i).value)||null,
+               gender: document.getElementById("acc-gender-"+i).value,
+               address: document.getElementById("acc-address-"+i).value,
+               occupation: document.getElementById("acc-occ-"+i).value,
+               district: document.getElementById("acc-dist-"+i).value,
+               mobile_number: document.getElementById("acc-mob-"+i).value };
+    }).filter(a => a.name.trim());
+}
+
+function collectVictims() {
+  return [...document.getElementById("victim-blocks").querySelectorAll(".person-block")]
+    .map(b => {
+      const i = b.id.split("-")[1];
+      return { name: document.getElementById("vic-name-"+i).value,
+               occupation: document.getElementById("vic-occ-"+i).value,
+               age: parseInt(document.getElementById("vic-age-"+i).value)||null,
+               gender: document.getElementById("vic-gender-"+i).value,
+               address: document.getElementById("vic-address-"+i).value,
+               injury_type: document.getElementById("vic-injury-"+i).value,
+               mobile_number: document.getElementById("vic-mob-"+i).value };
+    }).filter(v => v.name.trim());
+}
+
+async function submitFIR() {
+  const payload = {
+    fir_number:     document.getElementById("f-fir_number").value.trim(),
+    date_of_fir:    document.getElementById("f-date_of_fir").value,
+    date_of_offence:document.getElementById("f-date_of_offence").value || null,
+    crime_type:     document.getElementById("f-crime_type").value,
+    district:       document.getElementById("f-district-input").value.trim(),
+    police_station: document.getElementById("f-station-input").value.trim(),
+    section_of_law: document.getElementById("f-section_of_law").value.trim(),
+    status:         document.getElementById("f-status-input").value,
+    modus_operandi: document.getElementById("f-modus_operandi").value.trim(),
+    location:       document.getElementById("f-location").value.trim(),
+    description:    document.getElementById("f-description").value.trim(),
+    accused: collectAccused(),
+    victims: collectVictims(),
+  };
+  if (!payload.fir_number || !payload.date_of_fir || !payload.crime_type || !payload.district || !payload.police_station) {
+    toast("Please fill all required fields (*)", "error"); return;
+  }
+  const method = editingFIRId ? "PUT" : "POST";
+  const url    = editingFIRId ? `/api/firs/${editingFIRId}` : "/api/firs";
+  const res = await fetch(url, { method, headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+  if (!res.ok) { const e = await res.json(); toast("Error: " + e.error, "error"); return; }
+  toast(editingFIRId ? "FIR updated successfully" : "FIR registered successfully");
+  closeModal();
+  loadFIRs(currentPage);
+  loadDashboard();
+}
+
+// ── Analytics ────────────────────────────────────────────────────────────────
+const COLORS = ["#3b82f6","#7c3aed","#0891b2","#d97706","#16a34a","#dc2626","#9333ea","#0284c7","#ca8a04","#15803d","#c026d3","#0f766e"];
+
+async function loadAnalytics() {
+  const [repeat, interdist, hotspots, mo, patterns] = await Promise.all([
+    fetch(API + "/api/analytics/repeated_offenders").then(r => r.json()),
+    fetch(API + "/api/analytics/inter_district_offenders").then(r => r.json()),
+    fetch(API + "/api/analytics/hotspots").then(r => r.json()),
+    fetch(API + "/api/analytics/modus_operandi").then(r => r.json()),
+    fetch(API + "/api/analytics/crime_patterns").then(r => r.json()),
+  ]);
+
+  // Repeated offenders
+  const maxRep = Math.max(...repeat.map(x => x.fir_count), 1);
+  document.getElementById("at-repeat").innerHTML = repeat.slice(0,10).map((r, i) => `
+    <tr>
+      <td><span class="rank-badge${i===0?' r1':i===1?' r2':i===2?' r3':''}">${i+1}</span></td>
+      <td><strong>${r.name}</strong>${r.alias ? `<br><span style="color:var(--muted);font-size:11px">${r.alias}</span>` : ''}</td>
+      <td><span class="tag tag-red">${r.fir_count} FIRs</span></td>
+      <td>${tagsFromComma(r.crime_types)}</td>
+      <td>${tagsFromComma(r.districts)}</td>
+    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Insufficient data</td></tr>';
+
+  // Inter-district offenders
+  document.getElementById("at-interdist").innerHTML = interdist.slice(0,10).map((r, i) => `
+    <tr>
+      <td><span class="rank-badge${i===0?' r1':i===1?' r2':i===2?' r3':''}">${i+1}</span></td>
+      <td><strong>${r.name}</strong></td>
+      <td><span class="tag tag-yellow">${r.district_count} districts</span></td>
+      <td>${r.fir_count}</td>
+      <td>${tagsFromComma(r.crime_types)}</td>
+    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Insufficient data</td></tr>';
+
+  // Hotspots
+  const maxH = Math.max(...hotspots.map(x => x.fir_count), 1);
+  document.getElementById("at-hotspots").innerHTML = hotspots.slice(0,10).map((h, i) => `
+    <tr>
+      <td><span class="rank-badge${i===0?' r1':i===1?' r2':i===2?' r3':''}">${i+1}</span></td>
+      <td>${h.district}</td>
+      <td>${h.station}</td>
+      <td><strong>${h.fir_count}</strong></td>
+      <td style="min-width:80px"><div class="bar-fill" style="width:${Math.round(h.fir_count/maxH*100)}%"></div></td>
+    </tr>`).join("");
+
+  // Modus Operandi
+  const maxMO = Math.max(...mo.map(x => x.count), 1);
+  document.getElementById("at-mo").innerHTML = mo.map((m, i) => `
+    <tr>
+      <td><span class="rank-badge${i===0?' r1':i===1?' r2':i===2?' r3':''}">${i+1}</span></td>
+      <td style="max-width:220px">${m.modus_operandi}</td>
+      <td>
+        <strong>${m.count}</strong>
+        <div class="bar-fill" style="width:${Math.round(m.count/maxMO*100)}%;margin-top:4px"></div>
+      </td>
+      <td>${tagsFromComma(m.crime_types)}</td>
+    </tr>`).join("");
+
+  // Rising crime pattern multi-line chart
+  const months = [...new Set(patterns.map(p => p.month))].sort();
+  const crimeTypes = [...new Set(patterns.map(p => p.crime_type))];
+  const datasets = crimeTypes.map((ct, ci) => ({
+    label: ct,
+    data: months.map(m => { const r = patterns.find(p => p.month===m && p.crime_type===ct); return r ? r.count : 0; }),
+    borderColor: COLORS[ci % COLORS.length],
+    backgroundColor: "transparent",
+    tension: 0.3, pointRadius: 3, borderWidth: 2,
+  }));
+
+  const cpCtx = document.getElementById("chart-patterns").getContext("2d");
+  if (patternChart) patternChart.destroy();
+  patternChart = new Chart(cpCtx, {
+    type: "line",
+    data: { labels: months, datasets },
+    options: {
+      scales: {
+        x: { ticks: { color: "#7d8590", maxRotation: 45 }, grid: { color: "#30363d" } },
+        y: { ticks: { color: "#7d8590" }, grid: { color: "#30363d" } }
+      },
+      plugins: { legend: { labels: { color: "#e6edf3", font: { size: 11 }, boxWidth: 14 } } }
+    }
+  });
+  // Victim demographics
+  const vd = await fetch(API + "/api/analytics/victim_demographics").then(r => r.json());
+  function demoBars(items, key, total) {
+    const max = Math.max(...items.map(x => x.count), 1);
+    return items.map(x => `
+      <div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <span>${x[key]||'Unknown'}</span><span style="color:var(--muted)">${x.count}</span>
+        </div>
+        <div style="background:var(--border);border-radius:3px;height:5px">
+          <div style="width:${Math.round(x.count/max*100)}%;height:5px;border-radius:3px;background:var(--accent)"></div>
+        </div>
+      </div>`).join("");
+  }
+  document.getElementById("vd-gender").innerHTML  = demoBars(vd.gender, "gender");
+  document.getElementById("vd-injury").innerHTML  = demoBars(vd.injury, "injury_type");
+  document.getElementById("vd-age").innerHTML     = demoBars(vd.age_groups, "age_group");
+  document.getElementById("vd-crime").innerHTML   = demoBars(vd.by_crime, "crime_type");
+}
+
+function tagsFromComma(str) {
+  if (!str) return "—";
+  return str.split(",").map(s => s.trim()).filter(Boolean).map(s => `<span class="tag">${s}</span>`).join(" ");
+}
+
+// ── CSV Import ───────────────────────────────────────────────────────────────
+let csvFile = null;
+
+function onFileSelected(file) {
+  if (!file) return;
+  csvFile = file;
+  document.getElementById("drop-filename").textContent = file.name + "  (" + (file.size / 1024).toFixed(1) + " KB)";
+  document.getElementById("btn-preview").disabled = false;
+  document.getElementById("btn-import").disabled  = false;
+  document.getElementById("import-results").style.display = "none";
+  document.getElementById("preview-mapping").style.display = "none";
+}
+
+// Drag-and-drop
+(function setupDrop() {
+  const zone = document.getElementById("drop-zone");
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", e => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith(".csv")) {
+      document.getElementById("csv-file-input").files; // can't programmatically assign, just handle:
+      onFileSelected(f);
+      csvFile = f;
+    } else {
+      toast("Please drop a .csv file", "error");
+    }
+  });
+})();
+
+async function runPreview() {
+  if (!csvFile) return;
+  document.getElementById("btn-preview").textContent = "Loading…";
+  const fd = new FormData();
+  fd.append("file", csvFile);
+  const res  = await fetch("/api/import/preview", { method: "POST", body: fd });
+  const data = await res.json();
+  document.getElementById("btn-preview").textContent = "Preview";
+
+  if (data.error) { toast("Preview error: " + data.error, "error"); return; }
+
+  // Mapping chips
+  const grid = document.getElementById("mapping-grid");
+  grid.innerHTML = "";
+  const CANONICAL_LABELS = {
+    fir_number: "FIR Number", station: "Station", district: "District",
+    date: "Date", crime_type: "Crime Type", accused_name: "Accused Name",
+    accused_description: "Accused Description", location: "Location",
+    modus_operandi: "Modus Operandi", victim_profile: "Victim Profile",
+    repeat_offender_signature: "Repeat Offender Flag", raw_text: "Raw Text / Description",
+  };
+  for (const [canonical, csvCol] of Object.entries(data.mapped)) {
+    grid.innerHTML += `
+      <div class="mapping-chip">
+        <div class="mc-key">${CANONICAL_LABELS[canonical] || canonical}</div>
+        <div class="mc-val">${csvCol}</div>
+      </div>`;
+  }
+
+  // Unmapped
+  const um = document.getElementById("preview-unmapped");
+  if (data.unmapped && data.unmapped.length) {
+    um.innerHTML = `<div style="margin-top:10px;font-size:12px;color:var(--muted)">
+      <strong style="color:var(--yellow)">Unrecognised columns (ignored):</strong>
+      ${data.unmapped.map(c => `<span class="tag tag-yellow">${c}</span>`).join(" ")}
+    </div>`;
+  } else {
+    um.innerHTML = `<div style="margin-top:8px;font-size:12px;color:#4ade80">All columns recognised.</div>`;
+  }
+
+  // Sample rows table
+  if (data.rows && data.rows.length) {
+    const fields = ["fir_number","date_of_fir","station","district","crime_type","modus_operandi","accused_name","victim_occupation"];
+    const fieldLabels = ["FIR #","Date","Station","District","Crime","Modus Operandi","Accused","Victim Profile"];
+    let tbl = `<div style="margin-top:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Sample rows (first ${data.rows.length} of ${data.total_rows})</div>`;
+    tbl += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">`;
+    tbl += `<tr>${fieldLabels.map(l => `<th style="padding:7px 10px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap">${l}</th>`).join("")}</tr>`;
+    data.rows.forEach(r => {
+      tbl += `<tr>${fields.map(f => `<td style="padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis">${r[f] || '<span style="color:var(--muted)">—</span>'}</td>`).join("")}</tr>`;
+    });
+    tbl += `</table></div></div>`;
+    document.getElementById("preview-sample").innerHTML = tbl;
+  }
+
+  document.getElementById("preview-mapping").style.display = "block";
+}
+
+async function runImport() {
+  if (!csvFile) return;
+  const overwrite = document.getElementById("opt-overwrite").checked;
+  document.getElementById("btn-import").textContent = "Importing…";
+  document.getElementById("btn-import").disabled = true;
+
+  const fd = new FormData();
+  fd.append("file", csvFile);
+  const url = "/api/import/csv" + (overwrite ? "?overwrite=1" : "");
+  const res  = await fetch(url, { method: "POST", body: fd });
+  const data = await res.json();
+
+  document.getElementById("btn-import").textContent = "Import to Database";
+  document.getElementById("btn-import").disabled = false;
+
+  if (data.error) { toast("Import failed: " + data.error, "error"); return; }
+
+  // Summary
+  document.getElementById("ir-ins").textContent = data.inserted;
+  document.getElementById("ir-ski").textContent = data.skipped;
+  document.getElementById("ir-err").textContent = data.errors ? data.errors.filter(e => typeof e === "string").length : 0;
+
+  // Per-row results
+  const tbody = document.getElementById("ir-tbody");
+  tbody.innerHTML = "";
+  (data.results || []).forEach(r => {
+    const cls = r.status === "inserted" ? "result-row-ins" : r.status === "skipped" ? "result-row-skip" : "result-row-err";
+    const icon = r.status === "inserted" ? "✅" : r.status === "skipped" ? "⏭" : "❌";
+    tbody.innerHTML += `
+      <tr class="${cls}">
+        <td style="padding:9px 14px;font-size:13px">${r.row}</td>
+        <td style="padding:9px 14px;font-size:13px;font-weight:600;color:var(--accent-light)">${r.fir_number}</td>
+        <td style="padding:9px 14px;font-size:13px">${icon} ${r.status}</td>
+        <td style="padding:9px 14px;font-size:13px;color:var(--muted)">${r.message}</td>
+      </tr>`;
+  });
+
+  document.getElementById("import-results").style.display = "block";
+  document.getElementById("import-results").scrollIntoView({ behavior: "smooth" });
+
+  toast(`Import complete: ${data.inserted} inserted, ${data.skipped} skipped`, data.inserted > 0 ? "success" : "error");
+  // Refresh dashboard counts if we're navigating there
+  loadDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  HEATMAP  (Leaflet.js — bubble clusters from /api/map/clusters)
+// ═══════════════════════════════════════════════════════════════════════════════
+let leafletMap = null, allClusters = [], allPins = [], pinLayers = [], mapMode = "bubble";
+let mapDataLoaded = false;
+
+const CRIME_COLORS = {
+  "Burglary":"#ef4444","Theft":"#f97316","Robbery":"#eab308","Murder":"#dc2626",
+  "Assault":"#f87171","Kidnapping":"#a855f7","Financial Fraud":"#3b82f6",
+  "Cybercrime - Fraud":"#06b6d4","Cybercrime - Harassment":"#8b5cf6",
+  "Drug Trafficking":"#10b981","Vehicle Theft":"#6366f1","Chain Snatching":"#ec4899",
+  "Extortion":"#f59e0b","Cheating":"#14b8a6","Domestic Violence":"#e11d48",
+  "Fraud":"#3b82f6","Cybercrime":"#06b6d4",
+};
+function crimeColor(c) { return CRIME_COLORS[c] || "#7d8590"; }
+
+async function loadMap() {
+  // 1. Load Leaflet CSS + JS once
+  if (!window.L) {
+    await new Promise(resolve => {
+      const css = document.createElement("link");
+      css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(css);
+      const js = document.createElement("script");
+      js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      js.onload = resolve; document.head.appendChild(js);
+    });
+  }
+
+  // 2. Fetch data first (parallel, before touching the DOM/map)
+  if (!mapDataLoaded) {
+    const [clusters, pins] = await Promise.all([
+      fetch("/api/map/clusters").then(r => r.json()),
+      fetch("/api/map/firs").then(r => r.json()),
+    ]);
+    allClusters = clusters;
+    allPins     = pins;
+    mapDataLoaded = true;
+
+    // Populate crime filter
+    const crimes = [...new Set(pins.map(f => f.crime_type))].sort();
+    const sel = document.getElementById("map-crime-filter");
+    sel.innerHTML = '<option value="">All Crime Types</option>';
+    crimes.forEach(c => sel.innerHTML += `<option>${c}</option>`);
+
+    // Legend
+    document.getElementById("map-legend").innerHTML = crimes.slice(0,14).map(c =>
+      `<span style="display:flex;align-items:center;gap:4px">
+         <span style="width:10px;height:10px;border-radius:50%;background:${crimeColor(c)};display:inline-block"></span>${c}
+       </span>`
+    ).join("");
+  }
+
+  // 3. Destroy any previously-broken map instance (created while container was 0×0)
+  if (leafletMap) {
+    // If Leaflet's stored size is still 0, it was init'd while hidden — destroy & recreate
+    const storedH = leafletMap.getSize().y;
+    if (storedH < 10) {
+      leafletMap.remove();
+      leafletMap = null;
+      // Restore the loading placeholder (Leaflet clears the div on .remove())
+      const c = document.getElementById("map-container");
+      c.innerHTML = `<div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--card);z-index:10;font-size:13px;color:var(--muted)">Re-initialising…</div>`;
+    }
+  }
+
+  // 4. Create map — container is now visible and has real dimensions
+  const el = document.getElementById("map-container");
+  console.log("[FIR-X map] container size:", el.clientWidth, "x", el.clientHeight);
+
+  if (!leafletMap) {
+    leafletMap = L.map("map-container", { preferCanvas: true }).setView([20.5, 76.0], 6);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap contributors", maxZoom: 18,
+    }).addTo(leafletMap);
+  } else {
+    leafletMap.invalidateSize();
+  }
+
+  // Hide loading overlay
+  const loader = document.getElementById("map-loading");
+  if (loader) loader.style.display = "none";
+
+  // 5. Render bubbles after a short yield so Leaflet finishes layout
+  console.log("[FIR-X map] rendering", allClusters.length, "clusters");
+  setTimeout(() => renderBubbles(allClusters), 80);
+}
+
+function clearLayers() {
+  pinLayers.forEach(l => { try { leafletMap.removeLayer(l); } catch(e){} });
+  pinLayers = [];
+}
+
+function renderBubbles(clusters) {
+  if (!leafletMap || !clusters.length) return;
+  clearLayers();
+  leafletMap.invalidateSize();
+  const maxTotal = Math.max(...clusters.map(c => c.total), 1);
+  clusters.forEach(c => {
+    // Radius: 8px min, 48px max, proportional to sqrt(count) for visual fairness
+    const r = 8 + Math.round(Math.sqrt(c.total / maxTotal) * 40);
+    const col = crimeColor(c.top_crime);
+    const opacity = 0.55 + (c.total / maxTotal) * 0.35;
+
+    const circle = L.circleMarker([c.lat, c.lng], {
+      radius: r,
+      color: col,
+      weight: 1.5,
+      fillColor: col,
+      fillOpacity: opacity,
+    }).addTo(leafletMap);
+
+    // Crime breakdown list
+    const breakdown = Object.entries(c.crimes)
+      .sort((a,b) => b[1]-a[1])
+      .map(([ct, n]) => `<div style="display:flex;justify-content:space-between;gap:10px">
+        <span style="color:${crimeColor(ct)}">${ct}</span><strong>${n}</strong></div>`)
+      .join("");
+
+    circle.bindPopup(`
+      <div style="min-width:210px;font-family:system-ui,sans-serif;font-size:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">${c.station} — ${c.district}</div>
+        <div style="color:#888;margin-bottom:8px">Total FIRs: <strong style="color:#e6edf3">${c.total}</strong></div>
+        <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Crime Breakdown</div>
+        ${breakdown}
+      </div>`);
+
+    // Label on large bubbles
+    if (c.total >= 5) {
+      const label = L.divIcon({
+        className: "",
+        html: `<div style="color:#fff;font-size:10px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.8);pointer-events:none">${c.total}</div>`,
+        iconSize: [20, 14], iconAnchor: [10, 7],
+      });
+      pinLayers.push(L.marker([c.lat, c.lng], { icon: label, interactive: false }).addTo(leafletMap));
+    }
+    pinLayers.push(circle);
+  });
+}
+
+function renderPins(data) {
+  if (!leafletMap || !data.length) return;
+  clearLayers();
+  leafletMap.invalidateSize();
+  data.forEach(f => {
+    const col = crimeColor(f.crime_type);
+    const icon = L.divIcon({
+      className: "",
+      html: `<div style="width:9px;height:9px;border-radius:50%;background:${col};border:1.5px solid rgba(255,255,255,.8);box-shadow:0 1px 4px rgba(0,0,0,.6)"></div>`,
+      iconSize:[9,9], iconAnchor:[4,4],
+    });
+    const marker = L.marker([f.lat, f.lng], { icon }).addTo(leafletMap);
+    marker.bindPopup(`
+      <div style="min-width:200px;font-family:system-ui,sans-serif;font-size:12px">
+        <div style="font-weight:700;color:#2563eb;margin-bottom:4px">${f.fir_number}</div>
+        <div><b>Crime:</b> ${f.crime_type}</div>
+        <div><b>Date:</b> ${f.date}</div>
+        <div><b>Station:</b> ${f.station} — ${f.district}</div>
+        ${f.location ? `<div><b>Location:</b> ${f.location}</div>` : ""}
+        ${f.modus_operandi ? `<div><b>MO:</b> ${f.modus_operandi}</div>` : ""}
+        <div style="margin-top:6px"><button onclick="viewFIR(${f.id})" style="background:#2563eb;color:#fff;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">View Detail</button></div>
+      </div>`);
+    pinLayers.push(marker);
+  });
+}
+
+function filterMapPins() {
+  const crime  = document.getElementById("map-crime-filter").value;
+  const status = document.getElementById("map-status-filter").value;
+  if (mapMode === "bubble") {
+    const filtered = allClusters.filter(c =>
+      (!crime || c.top_crime === crime || crime in c.crimes)
+    );
+    renderBubbles(filtered);
+  } else {
+    renderPins(allPins.filter(f => (!crime || f.crime_type===crime) && (!status || f.status===status)));
+  }
+}
+
+function toggleMapMode() {
+  mapMode = mapMode === "bubble" ? "pin" : "bubble";
+  document.getElementById("map-mode-btn").textContent =
+    mapMode === "bubble" ? "Switch to Pins" : "Switch to Bubbles";
+  filterMapPins();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ACCUSED NETWORK GRAPH  (D3.js — search-first ego-network)
+// ═══════════════════════════════════════════════════════════════════════════════
+let d3Loaded = false, netSuggestTimer = null, currentEgoName = null;
+
+async function ensureD3() {
+  if (d3Loaded) return;
+  await new Promise(resolve => {
+    const s = document.createElement("script");
+    s.src = "https://d3js.org/d3.v7.min.js";
+    s.onload = resolve; document.head.appendChild(s);
+  });
+  d3Loaded = true;
+}
+
+// ── Load top accused chips on page open ──────────────────────────────────────
+async function loadNetwork() {
+  await ensureD3();
+  // Load top-20 accused as quick-select chips
+  const names = await fetch("/api/analytics/accused_names").then(r => r.json());
+  document.getElementById("net-top-chips").innerHTML =
+    '<span style="font-size:11px;color:var(--muted);align-self:center">Top offenders: </span>' +
+    names.slice(0,10).map(n =>
+      `<button onclick="selectAccused('${n.name.replace(/'/g,"\\'")}','${n.fir_count}')"
+        style="background:var(--surface);border:1px solid var(--border);color:var(--text);
+               padding:3px 10px;border-radius:12px;cursor:pointer;font-size:12px">
+         ${n.name} <span style="color:var(--accent-light)">${n.fir_count}</span>
+       </button>`).join("");
+  document.getElementById("net-info").textContent = `${names.length}+ accused in DB`;
+  // Auto-load ego of top accused
+  if (names.length) selectAccused(names[0].name, names[0].fir_count);
+}
+
+function selectAccused(name, firCount) {
+  document.getElementById("net-search").value = name;
+  document.getElementById("net-suggest").style.display = "none";
+  loadEgoNetwork(name);
+}
+
+async function loadEgoNetwork(forceName) {
+  await ensureD3();
+  const name = forceName || document.getElementById("net-search").value.trim();
+  if (!name) { toast("Enter an accused name first", "error"); return; }
+  currentEgoName = name;
+
+  const res  = await fetch("/api/analytics/network/ego?name=" + encodeURIComponent(name));
+  if (!res.ok) { toast("Accused not found: " + name, "error"); return; }
+  const data = await res.json();
+
+  document.getElementById("net-info").textContent =
+    `${data.nodes.length} persons · ${data.edges.length} connections · ${data.firs.length} FIRs`;
+
+  renderGraph(data.nodes, data.edges, name);
+  renderNetSidebar(data);
+}
+
+// ── Accused name autocomplete ─────────────────────────────────────────────────
+async function netSearchInput() {
+  clearTimeout(netSuggestTimer);
+  const q = document.getElementById("net-search").value.trim();
+  if (q.length < 2) { document.getElementById("net-suggest").style.display="none"; return; }
+  netSuggestTimer = setTimeout(async () => {
+    const list = await fetch("/api/analytics/accused_names?q=" + encodeURIComponent(q)).then(r => r.json());
+    const box  = document.getElementById("net-suggest");
+    if (!list.length) { box.style.display="none"; return; }
+    box.innerHTML = list.map(n =>
+      `<div onclick="selectAccused('${n.name.replace(/'/g,"\\'")}', ${n.fir_count})"
+        style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between"
+        onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+        <span>${n.name}</span>
+        <span style="color:var(--accent-light);font-size:11px">${n.fir_count} FIRs</span>
+      </div>`
+    ).join("");
+    box.style.display = "block";
+  }, 180);
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest("#net-search") && !e.target.closest("#net-suggest"))
+    document.getElementById("net-suggest").style.display = "none";
+});
+
+// ── Sidebar: FIR list for selected accused ────────────────────────────────────
+function renderNetSidebar(data) {
+  const sb = document.getElementById("net-sidebar");
+  const fcs = data.firs;
+  sb.innerHTML = `
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px">${data.name}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${fcs.length} FIRs · Click row to view</div>
+    ${fcs.map(f => `
+      <div onclick="viewFIR(${f.fir_id})" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:8px;cursor:pointer"
+           onmouseover="this.style.background='#21282f'" onmouseout="this.style.background='var(--surface)'">
+        <div style="font-weight:600;color:var(--accent-light);font-size:12px">${f.fir_number}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${f.crime_type} · ${f.date_of_fir}</div>
+        <div style="font-size:11px;color:var(--muted)">${f.station}, ${f.district}</div>
+        ${f.modus_operandi ? `<div style="font-size:11px;color:#fbbf24;margin-top:2px">MO: ${f.modus_operandi}</div>` : ""}
+        ${statusBadge(f.status)}
+      </div>`).join("")}
+  `;
+}
+
+// ── D3 force graph renderer ───────────────────────────────────────────────────
+function renderGraph(nodes, edges, egoName) {
+  const container = document.getElementById("network-container");
+  container.innerHTML = "";
+  const W = container.clientWidth || 700, H = container.clientHeight || 540;
+
+  const svg = d3.select("#network-container").append("svg")
+    .attr("width", W).attr("height", H)
+    .style("background","#1c2128").style("display","block");
+  const g = svg.append("g");
+  svg.call(d3.zoom().scaleExtent([0.2, 5]).on("zoom", e => g.attr("transform", e.transform)));
+
+  // Arrow marker for directed hint (optional)
+  svg.append("defs").append("marker")
+    .attr("id","arrowhead").attr("viewBox","0 -3 6 6").attr("refX",12)
+    .attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto")
+    .append("path").attr("d","M0,-3L6,0L0,3").attr("fill","#30363d");
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link",      d3.forceLink(edges).id(d => d.id).distance(d => 60 + (d.weight||1)*8))
+    .force("charge",    d3.forceManyBody().strength(-180))
+    .force("center",    d3.forceCenter(W/2, H/2))
+    .force("collision", d3.forceCollide(d => 10 + Math.min(d.fir_count, 12)));
+
+  const link = g.append("g").selectAll("line").data(edges).join("line")
+    .attr("stroke","#3d444d")
+    .attr("stroke-width", d => Math.min(1 + (d.weight||1)*0.8, 6))
+    .attr("stroke-opacity", 0.75);
+
+  const nodeGroup = g.append("g").selectAll("g").data(nodes).join("g")
+    .attr("cursor","pointer")
+    .call(d3.drag()
+      .on("start",(e,d)=>{ if(!e.active) sim.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on("drag", (e,d)=>{ d.fx=e.x; d.fy=e.y; })
+      .on("end",  (e,d)=>{ if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  // Glow ring for ego node
+  nodeGroup.filter(d => d.ego).append("circle")
+    .attr("r", d => 12 + Math.min(d.fir_count * 1.8, 18))
+    .attr("fill","none").attr("stroke","#f59e0b").attr("stroke-width",2.5)
+    .attr("stroke-opacity",0.6);
+
+  // Main circle
+  nodeGroup.append("circle")
+    .attr("r",  d => 7 + Math.min(d.fir_count * 1.8, 18))
+    .attr("fill",   d => d.ego ? "#f59e0b" : d.repeat ? "#da3633" : "#2563eb")
+    .attr("stroke", d => d.ego ? "#fbbf24" : d.repeat ? "#f87171" : "#3b82f6")
+    .attr("stroke-width", 1.5);
+
+  // Label for nodes with fir_count >= 2
+  nodeGroup.filter(d => d.fir_count >= 2 || d.ego).append("text")
+    .attr("font-size", d => d.ego ? 11 : 9)
+    .attr("font-weight", d => d.ego ? "700" : "400")
+    .attr("fill","#e6edf3")
+    .attr("text-anchor","middle")
+    .attr("dy", d => -(10 + Math.min(d.fir_count * 1.8, 18)))
+    .text(d => d.id.split(" ")[0] + (d.id.split(" ")[1] ? " " + d.id.split(" ")[1][0] + "." : ""));
+
+  // FIR count badge inside circle
+  nodeGroup.filter(d => d.fir_count >= 3).append("text")
+    .attr("font-size", 8).attr("font-weight","700").attr("fill","#fff")
+    .attr("text-anchor","middle").attr("dy","3")
+    .text(d => d.fir_count);
+
+  // Click: load sidebar for this accused
+  nodeGroup.on("click", (e, d) => {
+    e.stopPropagation();
+    document.getElementById("net-search").value = d.id;
+    loadEgoNetwork(d.id);
+  });
+
+  // Tooltip
+  nodeGroup.append("title").text(d =>
+    `${d.id}\nFIRs: ${d.fir_count}\nCrimes: ${(d.crimes||[]).join(", ")}\n${d.ego?"← Selected ego":""}${d.repeat?" ⚠ Repeat offender":""}`
+  );
+
+  sim.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    nodeGroup.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadAlertBadge() {
+  const d = await fetch("/api/alerts").then(r => r.json());
+  const badge = document.getElementById("alert-badge");
+  if (d.unread > 0) { badge.style.display="block"; badge.textContent=d.unread>9?"9+":d.unread; }
+  else              { badge.style.display="none"; }
+}
+
+async function openAlerts() {
+  const d = await fetch("/api/alerts").then(r => r.json());
+  const list = document.getElementById("alerts-list");
+  list.innerHTML = "";
+  if (!d.alerts.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0">No alerts yet. Import data to trigger rules.</div>';
+  } else {
+    d.alerts.forEach(a => {
+      const sev  = a.severity==="High"?"#da3633":a.severity==="Medium"?"#d29922":"#2563eb";
+      const icon = a.type==="repeat_offender"?"🔁":a.type==="district_spread"?"🗺️":a.type==="mo_spike"?"🎭":"📈";
+      const alpha = a.is_read ? "opacity:.5" : "";
+      list.innerHTML += `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${sev};border-radius:8px;padding:12px;margin-bottom:10px;${alpha}">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span>${icon}</span><strong style="font-size:13px">${a.title}</strong>
+            <span style="margin-left:auto;font-size:10px;font-weight:700;color:${sev};border:1px solid ${sev};padding:1px 6px;border-radius:8px">${a.severity}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">${a.detail}</div>
+          <div style="margin-top:4px;font-size:11px;color:var(--muted)">${(a.created_at||"").slice(0,16)}</div>
+          ${!a.is_read?`<button onclick="markRead(${a.id},this)" style="margin-top:6px;background:none;border:none;color:var(--accent-light);font-size:11px;cursor:pointer;padding:0">Mark read</button>`:""}
+        </div>`;
+    });
+  }
+  document.getElementById("alerts-panel").classList.add("open");
+  loadAlertBadge();
+}
+
+async function markRead(id, btn) {
+  await fetch(`/api/alerts/${id}/read`, { method:"POST" });
+  btn.closest("div[style]").style.opacity=".5"; btn.remove(); loadAlertBadge();
+}
+async function markAllRead() { await fetch("/api/alerts/read_all",{method:"POST"}); openAlerts(); }
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FULL-TEXT SEARCH AUTOCOMPLETE
+// ═══════════════════════════════════════════════════════════════════════════════
+let suggestTimer = null;
+
+function debounceSearch() {
+  clearTimeout(searchTimer);
+  clearTimeout(suggestTimer);
+  const q = document.getElementById("search-box").value;
+  suggestTimer = setTimeout(() => fetchSuggestions(q), 180);
+  searchTimer  = setTimeout(() => { hideSuggestions(); loadFIRs(1); }, 380);
+}
+
+async function fetchSuggestions(q) {
+  if (q.length < 2) { hideSuggestions(); return; }
+  const list = await fetch(`/api/firs/suggest?q=${encodeURIComponent(q)}`).then(r=>r.json());
+  const box  = document.getElementById("search-suggest");
+  if (!list.length) { hideSuggestions(); return; }
+  box.innerHTML = list.map(s =>
+    `<div onclick="applySuggest(this.textContent)" style="padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">${s}</div>`
+  ).join("");
+  box.style.display = "block";
+}
+function hideSuggestions() { document.getElementById("search-suggest").style.display="none"; }
+function applySuggest(val) { document.getElementById("search-box").value=val; hideSuggestions(); loadFIRs(1); }
+document.addEventListener("click", e => { if(!e.target.closest("#search-box")&&!e.target.closest("#search-suggest")) hideSuggestions(); });
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AI FIR SUMMARISER
+// ═══════════════════════════════════════════════════════════════════════════════
+let aiExtracted = {};
+
+async function runAIExtract() {
+  const text = document.getElementById("ai-text-input").value.trim();
+  if (!text) { toast("Paste a FIR narrative first","error"); return; }
+  const res  = await fetch("/api/ai/extract",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+  const data = await res.json();
+  if (data.error) { toast("Extraction failed: "+data.error,"error"); return; }
+  aiExtracted = data;
+  const LABELS = {
+    crime_type:"Crime Type", modus_operandi:"Modus Operandi", location:"Location",
+    accused_name:"Accused Name", accused_description:"Accused Description",
+    victim_profile:"Victim Profile", repeat_offender:"Repeat Offender",
+  };
+  const grid = document.getElementById("ai-fields");
+  grid.innerHTML = "";
+  for (const [k,label] of Object.entries(LABELS)) {
+    const v = data[k];
+    if (v !== null && v !== undefined && v !== "") {
+      grid.innerHTML += `<div class="mapping-chip"><div class="mc-key">${label}</div><div class="mc-val">${v===true?"Yes":v===false?"No":v}</div></div>`;
+    }
+  }
+  document.getElementById("ai-result").style.display="block";
+  document.getElementById("btn-apply-ai").disabled=false;
+  toast("Fields extracted — click Apply to open the New FIR form","success");
+}
+
+function applyExtracted() {
+  openAddFIR();
+  setTimeout(() => {
+    if (aiExtracted.crime_type) {
+      const sel = document.getElementById("f-crime_type");
+      for (let i=0; i<sel.options.length; i++) { if(sel.options[i].value===aiExtracted.crime_type){sel.selectedIndex=i;break;} }
+    }
+    if (aiExtracted.modus_operandi) document.getElementById("f-modus_operandi").value = aiExtracted.modus_operandi;
+    if (aiExtracted.location)       document.getElementById("f-location").value       = aiExtracted.location;
+    if (aiExtracted.description)    document.getElementById("f-description").value    = aiExtracted.description;
+    if (aiExtracted.accused_name || aiExtracted.accused_description) {
+      document.getElementById("accused-blocks").innerHTML="";
+      addAccusedBlock({ name: aiExtracted.accused_name||aiExtracted.accused_description||"", address: aiExtracted.accused_description||"", prior_offences: aiExtracted.repeat_offender?1:0 });
+    }
+    if (aiExtracted.victim_profile) { document.getElementById("victim-blocks").innerHTML=""; addVictimBlock({occupation:aiExtracted.victim_profile}); }
+    toast("Form pre-filled from AI extraction","success");
+  }, 100);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  BULK SELECT + STATUS UPDATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let selectedIds = new Set();
+
+function onRowCheck(cb) {
+  const id = parseInt(cb.value);
+  if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(master) {
+  document.querySelectorAll(".row-check").forEach(cb => {
+    cb.checked = master.checked;
+    const id = parseInt(cb.value);
+    if (master.checked) selectedIds.add(id); else selectedIds.delete(id);
+  });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById("bulk-bar");
+  document.getElementById("bulk-count").textContent = selectedIds.size;
+  if (selectedIds.size > 0) bar.classList.add("visible");
+  else bar.classList.remove("visible");
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  document.querySelectorAll(".row-check").forEach(cb => cb.checked = false);
+  const sa = document.getElementById("select-all");
+  if (sa) sa.checked = false;
+  updateBulkBar();
+}
+
+async function applyBulkStatus() {
+  if (!selectedIds.size) return;
+  const status = document.getElementById("bulk-status-sel").value;
+  if (!confirm(`Change ${selectedIds.size} FIR(s) to "${status}"?`)) return;
+  const res = await fetch("/api/firs/bulk_status", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ ids: [...selectedIds], status }),
+  });
+  const data = await res.json();
+  if (data.error) { toast("Error: " + data.error, "error"); return; }
+  toast(`Updated ${data.updated} FIR(s) to ${status}`);
+  clearSelection();
+  loadFIRs(currentPage);
+  loadDashboard();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CSV EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+function exportFIRsCSV() {
+  const params = new URLSearchParams({
+    search:    document.getElementById("search-box").value,
+    district:  document.getElementById("f-district").value,
+    crime_type:document.getElementById("f-crime").value,
+    status:    document.getElementById("f-status").value,
+    from_date: document.getElementById("f-from").value,
+    to_date:   document.getElementById("f-to").value,
+  });
+  window.open("/api/firs/export/csv?" + params, "_blank");
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ACCUSED PROFILE
+// ═══════════════════════════════════════════════════════════════════════════════
+async function viewAccusedProfile(name) {
+  const res = await fetch("/api/analytics/accused/" + encodeURIComponent(name));
+  if (!res.ok) { toast("Profile not found","error"); return; }
+  const p = await res.json();
+
+  const RISK_CLASS = { Critical:"risk-critical", High:"risk-high", Medium:"risk-medium", Low:"risk-low" };
+  const riskClass  = RISK_CLASS[p.risk_label] || "";
+
+  // Risk gauge bar (0–100)
+  const gaugeColor = p.risk_score>=70?"#f87171":p.risk_score>=45?"#fb923c":p.risk_score>=25?"#fbbf24":"#4ade80";
+
+  document.getElementById("accused-modal-title").textContent = "Accused Profile – " + p.name;
+  document.getElementById("accused-modal-body").innerHTML = `
+    <!-- Header strip -->
+    <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;min-width:200px">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Risk Score</div>
+        <div style="font-size:42px;font-weight:800" class="${riskClass}">${p.risk_score}</div>
+        <div style="font-size:12px;font-weight:700" class="${riskClass}">${p.risk_label}</div>
+        <div style="background:var(--border);border-radius:4px;height:6px;margin-top:8px">
+          <div style="width:${p.risk_score}%;height:6px;border-radius:4px;background:${gaugeColor};transition:width .5s"></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        ${kv("Name", p.name)}
+        ${p.alias ? kv("Alias", p.alias) : ""}
+        ${kv("Age / Gender", (p.age||"?")+' / '+(p.gender||"?"))}
+        ${kv("Occupation", p.occupation||"—")}
+        ${kv("Address", p.address||"—")}
+        ${p.mobile_number ? kv("Mobile", p.mobile_number) : ""}
+        ${p.aadhar_number ? kv("Aadhaar", p.aadhar_number) : ""}
+      </div>
+      <div style="min-width:180px">
+        ${kv("Total FIRs", p.fir_count)}
+        ${kv("Districts Active", p.district_count)}
+        ${kv("Prior Offences", p.prior_offences)}
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Crime Types</div>${p.crime_types.map(c=>`<span class="tag tag-red">${c}</span>`).join(" ")}</div>
+        <div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Districts</div>${p.districts.map(d=>`<span class="tag">${d}</span>`).join(" ")}</div>
+      </div>
+    </div>
+
+    <!-- MO list -->
+    ${p.modus_operandi.length ? `
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Known Modus Operandi</div>
+      ${p.modus_operandi.map(m=>`<span class="tag tag-yellow">${m}</span>`).join(" ")}
+    </div>` : ""}
+
+    <!-- FIR history table -->
+    <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">FIR History (${p.fir_count})</div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">FIR #</th>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">Date</th>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">Crime</th>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">District</th>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">Station</th>
+        <th style="padding:8px 12px;text-align:left;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface)">Status</th>
+      </tr></thead>
+      <tbody>
+        ${p.firs.map(f=>`
+          <tr onclick="document.getElementById('accused-modal').classList.remove('open');viewFIR(${f.fir_id})" style="cursor:pointer">
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border);font-weight:600;color:var(--accent-light)">${f.fir_number}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border)">${f.date_of_fir}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border)">${f.crime_type}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border)">${f.district}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border)">${f.station}</td>
+            <td style="padding:9px 12px;border-bottom:1px solid var(--border)">${statusBadge(f.status)}</td>
+          </tr>`).join("")}
+      </tbody>
+    </table>
+    </div>
+  `;
+  document.getElementById("accused-modal").classList.add("open");
+}
+
+
+// ── Updated showPage ──────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("page-"+name).classList.add("active");
+  event.target.classList.add("active");
+  if (name==="dashboard") loadDashboard();
+  if (name==="firs")      { loadDistricts(); loadFIRs(1); }
+  if (name==="analytics") loadAnalytics();
+  // Defer map/network init by 250ms so the browser fully paints the
+  // now-visible container before Leaflet/D3 measure its pixel dimensions.
+  if (name==="map")     setTimeout(loadMap, 250);
+  if (name==="network") setTimeout(loadNetwork, 250);
+  if (name==="ai")      aiPageOpened();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AI ANALYST CHAT
+// ═══════════════════════════════════════════════════════════════════════════════
+let aiThinkingEl = null;
+
+const AI_WELCOME_HTML = document.getElementById("ai-messages") ? document.getElementById("ai-messages").innerHTML : "";
+
+function aiPageOpened() {
+  // Check LLM reachability by sending a no-op ping — just set status dot
+  // We don't actually ping; dot defaults to green and turns red on first error.
+}
+
+function aiAppendMsg(role, htmlContent) {
+  const wrap = document.createElement("div");
+  wrap.className = "ai-msg " + role;
+  const avatar = document.createElement("div");
+  avatar.className = "ai-avatar";
+  avatar.textContent = role === "user" ? "👤" : "🤖";
+  const bubble = document.createElement("div");
+  bubble.className = "ai-bubble";
+  bubble.innerHTML = htmlContent;
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  const box = document.getElementById("ai-messages");
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+  return wrap;
+}
+
+function aiShowThinking() {
+  const wrap = document.createElement("div");
+  wrap.className = "ai-msg bot";
+  wrap.id = "ai-thinking-row";
+  wrap.innerHTML = `
+    <div class="ai-avatar">🤖</div>
+    <div class="ai-bubble ai-thinking">
+      Analysing database<span></span><span></span><span></span>
+    </div>`;
+  const box = document.getElementById("ai-messages");
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+
+function aiRemoveThinking() {
+  const el = document.getElementById("ai-thinking-row");
+  if (el) el.remove();
+}
+
+function aiFormatAnswer(text) {
+  // Convert markdown-lite to HTML: **bold**, bullet lines, newlines
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/^[-•]\s+(.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+}
+
+async function aiSend() {
+  const inp  = document.getElementById("ai-input");
+  const question = inp.value.trim();
+  if (!question) return;
+
+  inp.value = "";
+  inp.style.height = "auto";
+  document.getElementById("ai-send-btn").disabled = true;
+
+  aiAppendMsg("user", question.replace(/</g,"&lt;").replace(/>/g,"&gt;"));
+  aiShowThinking();
+
+  try {
+    const res = await fetch("/api/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+
+    aiRemoveThinking();
+
+    // Guard: parse JSON safely — a non-JSON response (e.g. HTML error page) must not
+    // crash here and produce the misleading "Unexpected token '<'" Network error.
+    let data;
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const raw = await res.text();
+      data = { error: `Server returned HTTP ${res.status}. Is the Flask server running? (response was not JSON)` };
+      console.error("Non-JSON response from /api/ai/chat:", raw.slice(0, 400));
+    }
+
+    if (data.error) {
+      aiAppendMsg("bot", `<span style="color:#f87171">⚠ ${data.error}</span>`);
+      document.getElementById("ai-dot").classList.add("offline");
+    } else {
+      aiAppendMsg("bot", aiFormatAnswer(data.answer));
+      document.getElementById("ai-dot").classList.remove("offline");
+    }
+  } catch (e) {
+    aiRemoveThinking();
+    // fetch() itself throws only for network-level failures (server unreachable / CORS)
+    const msg = e.message.includes("fetch")
+      ? "Cannot reach the server. Make sure the Flask app is running on port 5000."
+      : e.message;
+    aiAppendMsg("bot", `<span style="color:#f87171">⚠ ${msg}</span>`);
+    document.getElementById("ai-dot").classList.add("offline");
+  } finally {
+    document.getElementById("ai-send-btn").disabled = false;
+    inp.focus();
+  }
+}
+
+function aiAskSuggestion(el) {
+  document.getElementById("ai-input").value = el.textContent.trim();
+  // Switch to AI page if not already active
+  const page = document.getElementById("page-ai");
+  if (!page.classList.contains("active")) {
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+    page.classList.add("active");
+    document.querySelector('.nav-btn[onclick*="ai"]').classList.add("active");
+  }
+  aiSend();
+}
+
+function aiClearChat() {
+  const box = document.getElementById("ai-messages");
+  box.innerHTML = "";
+  aiAppendMsg("bot", `<strong>Chat cleared.</strong> Ask me a new question.`);
+  document.getElementById("ai-dot").classList.remove("offline");
+}
+
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadDashboard();
+loadAlertBadge();
+</script>
+</body>
+</html>
